@@ -1,0 +1,82 @@
+version: "3.8"
+
+# =============================================================================
+# Input Medical - Docker Compose
+#
+# Para usar tu BD PostgreSQL existente en vez de la de Docker:
+#   1. Comenta el servicio 'db' y el volumen 'db_data'
+#   2. En el servicio 'backend', apunta DB_HOST a tu servidor real
+# =============================================================================
+
+services:
+
+  # ─── PostgreSQL local (para desarrollo) ──────────────────────────────────────
+  # Omite este bloque si usas tu propia BD
+  db:
+    image: postgres:15-alpine
+    container_name: inputmedical_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-inputmedical}
+      POSTGRES_USER:     ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./supabase/migrations/001_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./supabase/migrations/002_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend Node.js ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: inputmedical_backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV:      development
+      PORT:          4000
+      DB_HOST:       db          # Cambia a tu host si usas BD externa
+      DB_PORT:       5432
+      DB_NAME:       ${DB_NAME:-inputmedical}
+      DB_USER:       ${DB_USER:-postgres}
+      DB_PASSWORD:   ${DB_PASSWORD:-postgres}
+      JWT_SECRET:    ${JWT_SECRET:-cambia_esto_por_un_secreto_seguro_minimo_32_chars}
+      JWT_EXPIRES_IN: 8h
+      FRONTEND_URL:  http://localhost:5173
+    depends_on:
+      db:
+        condition: service_healthy
+    # En desarrollo, monta el código para hot-reload con nodemon
+    volumes:
+      - ./apps/backend:/app
+      - /app/node_modules
+    command: node src/server.js
+
+  # ─── Frontend React + Vite ────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: inputmedical_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:4000
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  db_data:

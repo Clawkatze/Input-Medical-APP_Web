@@ -1,0 +1,84 @@
+import { useEffect, useState } from 'react'
+import { format, differenceInDays } from 'date-fns'
+import { es } from 'date-fns/locale'
+import api from '../services/api'
+import { PageLayout } from '../components/Layout'
+import toast from 'react-hot-toast'
+
+export default function AlertsPage() {
+  const [alertas, setAlertas] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/movimientos/alertas')
+      .then(({ data }) => setAlertas(data))
+      .catch(() => toast.error('Error al cargar alertas'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const dias = (fecha) => fecha ? differenceInDays(new Date(fecha), new Date()) : null
+
+  const getBadge = (item) => {
+    if (item.estado_vencimiento === 'VENCIDO')  return { label: 'VENCIDO',          cls: 'bg-error text-white' }
+    if (item.alerta_stock && item.estado_vencimiento === 'PROXIMO') return { label: 'CRÍTICO', cls: 'bg-error text-white' }
+    if (item.estado_vencimiento === 'PROXIMO')  return { label: 'PRÓXIMO A VENCER', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' }
+    return { label: 'STOCK CRÍTICO', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' }
+  }
+
+  const borderColor = (item) => item.estado_vencimiento === 'VENCIDO' ? 'border-error' : 'border-tertiary'
+
+  return (
+    <PageLayout title="Alertas del Sistema">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-10">
+          <h2 className="text-4xl font-extrabold mb-3">Monitor de Estado</h2>
+          <p className="text-lg text-on-surface-variant">Gestión proactiva de inventario médico.</p>
+        </div>
+
+        {loading ? (
+          <p className="text-center py-12 text-on-surface-variant">Cargando alertas...</p>
+        ) : alertas.length === 0 ? (
+          <div className="bg-white rounded-xl p-12 text-center shadow-sm border">
+            <span className="material-symbols-outlined text-5xl text-secondary mb-4 block">check_circle</span>
+            <h3 className="text-xl font-bold mb-2">Todo en orden</h3>
+            <p className="text-on-surface-variant">No hay alertas activas en este momento.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {alertas.map(item => {
+              const badge = getBadge(item)
+              const d     = dias(item.proximo_vencimiento)
+              return (
+                <div key={item.id} className={`bg-white border-l-4 ${borderColor(item)} p-6 rounded-xl shadow-sm`}>
+                  <div className="flex items-center justify-between gap-6">
+                    <div className="flex-1">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${badge.cls}`}>{badge.label}</span>
+                      <h3 className="text-xl font-bold mt-2">{item.nombre}</h3>
+                      <p className="text-on-surface-variant text-sm font-mono">{item.sku}</p>
+                    </div>
+                    <div className="text-center px-4">
+                      <p className="text-xs uppercase font-bold text-on-surface-variant mb-1">Stock</p>
+                      <p className={`text-2xl font-black ${item.alerta_stock ? 'text-error' : 'text-on-surface'}`}>{item.stock_actual}</p>
+                      <p className="text-xs text-on-surface-variant">mín. {item.stock_minimo}</p>
+                    </div>
+                    {item.proximo_vencimiento && (
+                      <div className="text-center px-4">
+                        <p className="text-xs uppercase font-bold text-on-surface-variant mb-1">Vencimiento</p>
+                        <p className={`text-lg font-bold ${d !== null && d < 0 ? 'text-error' : 'text-tertiary'}`}>
+                          {d !== null && d < 0 ? `${Math.abs(d)} días vencido` : d !== null ? `En ${d} días` : '—'}
+                        </p>
+                        <p className="text-xs text-on-surface-variant">
+                          {format(new Date(item.proximo_vencimiento), 'dd MMM yyyy', { locale: es })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </PageLayout>
+  )
+}
