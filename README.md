@@ -45,58 +45,145 @@ inputmedical/
 
 ---
 
+## ✅ Requisitos previos
+
+Antes de comenzar asegúrate de tener instalado:
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — debe estar **abierto y corriendo** antes de cualquier comando Docker
+- [Node.js 20+](https://nodejs.org/) — incluye `npm` automáticamente
+
+Para verificar:
+```
+node --version    → debe mostrar v20.x.x o superior
+npm --version     → viene incluido con Node.js
+docker --version  → confirma que Docker está instalado
+```
+
+> ⚠️ **Usuarios Windows:** los comandos de este README usan PowerShell.
+> PowerShell **no acepta** `&&` para encadenar comandos. Ejecútalos uno por uno.
+
+---
+
 ## 🚀 Levantar el proyecto (opción A: BD en Docker)
 
-### Requisitos
-- Docker Desktop instalado y corriendo
-- Node.js 20+ (para instalar dependencias localmente)
+### Paso 1 — Copiar variables de entorno
 
-### Pasos
-
-**1. Copiar variables de entorno:**
-```bash
+**Windows (PowerShell):**
+```powershell
 cp .env.example .env
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
 ```
 
-**2. Instalar dependencias** (necesario para que Docker monte los volúmenes correctamente):
+**Mac / Linux:**
+```bash
+cp .env.example .env && cp apps/backend/.env.example apps/backend/.env && cp apps/frontend/.env.example apps/frontend/.env
+```
+
+---
+
+### Paso 2 — Instalar dependencias
+
+Instala los paquetes de Node.js en cada aplicación. Esto es necesario porque Docker monta las carpetas como volumen y necesita encontrar `node_modules` ya creado.
+
+**Windows (PowerShell) — un comando por línea:**
+```powershell
+cd apps/backend
+npm install
+cd ../..
+cd apps/frontend
+npm install
+cd ../..
+```
+
+**Mac / Linux:**
 ```bash
 cd apps/backend && npm install && cd ../..
 cd apps/frontend && npm install && cd ../..
 ```
 
-> ⚠️ **Por qué necesitas `npm install` antes de Docker:**
-> Vite y los otros paquetes de `devDependencies` deben estar en `node_modules` localmente.
-> Docker monta la carpeta como volumen, así que si `node_modules` no existe, el contenedor no puede arrancar.
+---
 
-**3. Levantar todo:**
-```bash
+### Paso 3 — Levantar los contenedores
+
+Asegúrate de que **Docker Desktop esté abierto** antes de ejecutar esto:
+
+```powershell
 docker compose up -d
 ```
 
-| Servicio  | URL                     |
-|-----------|-------------------------|
-| Frontend  | http://localhost:5173   |
-| Backend   | http://localhost:4000   |
-| BD (psql) | localhost:5432          |
+Verifica que los tres contenedores estén corriendo (todos deben mostrar `Up`, no `Restarting`):
 
-**4. Ingresar al sistema:**
-- Email: `admin@inputmedical.cl`
-- Contraseña: `admin123`
+```powershell
+docker ps
+```
+
+Deberías ver:
+```
+inputmedical_db        Up
+inputmedical_backend   Up
+inputmedical_frontend  Up
+```
+
+> ⚠️ Si `inputmedical_backend` aparece como `Restarting`, revisa los logs:
+> ```powershell
+> docker logs inputmedical_backend
+> ```
+
+| Servicio  | URL                   |
+|-----------|-----------------------|
+| Frontend  | http://localhost:5173 |
+| Backend   | http://localhost:4000 |
+| BD (psql) | localhost:5432        |
+
+---
+
+### Paso 4 — Crear el usuario administrador
+
+El esquema se aplica automáticamente, pero el usuario admin debe crearse una sola vez.
+
+**4a. Generar el hash de la contraseña** (desde la carpeta `apps/backend` donde están las dependencias):
+
+```powershell
+cd apps/backend
+node -e "const b = require('bcryptjs'); b.hash('admin123', 10).then(h => console.log(h))"
+cd ../..
+```
+
+Copia el hash que imprime en consola (empieza con `$2a$10$...`).
+
+**4b. Conectarse a la BD e insertar el usuario:**
+
+```powershell
+docker exec -it inputmedical_db psql -U postgres -d inputmedical
+```
+
+Dentro del prompt de psql, pega esto reemplazando `HASH_AQUI` por el valor copiado:
+
+```sql
+INSERT INTO usuarios (email, nombre, password_hash, rol)
+VALUES ('admin@inputmedical.cl', 'Administrador', 'HASH_AQUI', 'admin');
+\q
+```
+
+---
+
+### Paso 5 — Ingresar al sistema
+
+Abre el navegador en **http://localhost:5173**
+
+- **Email:** `admin@inputmedical.cl`
+- **Contraseña:** `admin123`
 
 ---
 
 ## 🔌 Opción B: Conectar tu BD PostgreSQL existente
 
-Si ya tienes una BD de PostgreSQL creada, sigue estos pasos:
+Si ya tienes una BD de PostgreSQL creada:
 
 **1. Ejecutar el esquema en tu BD:**
 ```bash
-# Con psql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/001_schema.sql
-
-# Opcional: cargar datos de demo
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/002_seed.sql
 ```
 
@@ -116,7 +203,7 @@ DB_PASSWORD=TU_CONTRASEÑA
 ```
 
 **4. Levantar solo backend y frontend:**
-```bash
+```powershell
 docker compose up -d backend frontend
 ```
 
@@ -124,7 +211,7 @@ docker compose up -d backend frontend
 
 ## 🛠 Comandos útiles
 
-```bash
+```powershell
 # Ver logs en tiempo real
 docker compose logs -f
 
@@ -137,37 +224,31 @@ docker compose restart backend
 # Detener todo
 docker compose down
 
-# Reset total (borra la BD local)
+# Reset total (borra la BD local, útil para empezar desde cero)
 docker compose down -v
-
-# Correr backend localmente sin Docker
-cd apps/backend && npm run dev
-
-# Correr frontend localmente sin Docker
-cd apps/frontend && npm run dev
 ```
 
 ---
 
 ## 🔑 API REST - Endpoints principales
 
-| Método | Endpoint                        | Descripción                       |
-|--------|---------------------------------|-----------------------------------|
-| POST   | `/api/auth/login`               | Login, retorna JWT                |
-| GET    | `/api/auth/me`                  | Datos del usuario actual          |
-| GET    | `/api/productos`                | Listar productos (con búsqueda)   |
-| GET    | `/api/productos/barcode/:codigo`| Buscar por barcode o SKU          |
-| POST   | `/api/productos`                | Crear producto + lote inicial     |
-| PUT    | `/api/productos/:id`            | Editar producto                   |
-| DELETE | `/api/productos/:id`            | Desactivar producto (soft delete) |
-| POST   | `/api/movimientos/entrada`      | Registrar entrada de stock        |
-| POST   | `/api/movimientos/salida`       | Registrar salida (lógica FIFO)    |
-| GET    | `/api/movimientos`              | Kardex (filtrable por producto)   |
-| GET    | `/api/movimientos/alertas`      | Stock crítico y vencimientos      |
-| GET    | `/api/movimientos/dashboard-stats` | KPIs para el dashboard         |
-| GET    | `/api/reportes/stock`           | CSV con stock actual              |
-| GET    | `/api/reportes/vencimientos`    | CSV de productos por vencer       |
-| GET    | `/api/reportes/movimientos`     | CSV Kardex completo               |
+| Método | Endpoint                           | Descripción                       |
+|--------|------------------------------------|-----------------------------------|
+| POST   | `/api/auth/login`                  | Login, retorna JWT                |
+| GET    | `/api/auth/me`                     | Datos del usuario actual          |
+| GET    | `/api/productos`                   | Listar productos (con búsqueda)   |
+| GET    | `/api/productos/barcode/:codigo`   | Buscar por barcode o SKU          |
+| POST   | `/api/productos`                   | Crear producto + lote inicial     |
+| PUT    | `/api/productos/:id`               | Editar producto                   |
+| DELETE | `/api/productos/:id`               | Desactivar producto (soft delete) |
+| POST   | `/api/movimientos/entrada`         | Registrar entrada de stock        |
+| POST   | `/api/movimientos/salida`          | Registrar salida (lógica FIFO)    |
+| GET    | `/api/movimientos`                 | Kardex (filtrable por producto)   |
+| GET    | `/api/movimientos/alertas`         | Stock crítico y vencimientos      |
+| GET    | `/api/movimientos/dashboard-stats` | KPIs para el dashboard            |
+| GET    | `/api/reportes/stock`              | CSV con stock actual              |
+| GET    | `/api/reportes/vencimientos`       | CSV de productos por vencer       |
+| GET    | `/api/reportes/movimientos`        | CSV Kardex completo               |
 
 ---
 
