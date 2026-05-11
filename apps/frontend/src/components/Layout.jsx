@@ -3,12 +3,13 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 const NAV_ITEMS = [
-  { path: '/',              label: 'Dashboard',         icon: 'dashboard' },
-  { path: '/products',      label: 'Productos',         icon: 'inventory_2' },
-  { path: '/add-product',   label: 'Ingresar Producto', icon: 'add_box' },
-  { path: '/register-sale', label: 'Registrar Salida',  icon: 'point_of_sale' },
-  { path: '/reports',       label: 'Reportes',          icon: 'analytics' },
-  { path: '/alerts',        label: 'Alertas',           icon: 'notifications' },
+  { path: '/',               label: 'Dashboard',          icon: 'dashboard' },
+  { path: '/products',       label: 'Productos',          icon: 'inventory_2' },
+  { path: '/add-product',    label: 'Nuevo Producto',     icon: 'add_box' },
+  { path: '/register-entry', label: 'Registrar Entrada',  icon: 'move_to_inbox' },
+  { path: '/register-sale',  label: 'Registrar Salida',   icon: 'point_of_sale' },
+  { path: '/reports',        label: 'Reportes',           icon: 'analytics' },
+  { path: '/alerts',         label: 'Alertas',            icon: 'notifications' },
 ]
 
 export function SideNavBar() {
