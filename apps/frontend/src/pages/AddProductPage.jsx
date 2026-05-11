@@ -5,9 +5,14 @@ import { PageLayout } from '../components/Layout'
 import toast from 'react-hot-toast'
 
 const FORM_INIT = {
-  codigo_barras: '', sku: '', nombre: '', descripcion: '',
-  categoria_id: '', stock_minimo: 10, unidad_medida: 'unidad',
-  tiene_vencimiento: true, numero_lote: '', fecha_vencimiento: '', cantidad_inicial: '',
+  codigo_barras:     '',
+  sku:               '',
+  nombre:            '',
+  descripcion:       '',
+  categoria_id:      '',
+  stock_minimo:      10,
+  unidad_medida:     'unidad',
+  tiene_vencimiento: true,
 }
 
 export default function AddProductPage() {
@@ -28,10 +33,11 @@ export default function AddProductPage() {
 
   async function fetchCategorias() {
     try {
-      // Las categorías las traemos directo desde la BD via backend
-      const { data } = await api.get('/api/productos') // usa los datos del producto para inferir categorías
-      // Alternativa simple: endpoint dedicado (ver nota abajo)
-      const cats = [...new Map(data.filter(p => p.categoria_id).map(p => [p.categoria_id, { id: p.categoria_id, nombre: p.categoria_nombre }])).values()]
+      const { data } = await api.get('/api/productos')
+      const cats = [...new Map(
+        data.filter(p => p.categoria_id)
+            .map(p => [p.categoria_id, { id: p.categoria_id, nombre: p.categoria_nombre }])
+      ).values()]
       setCategorias(cats)
     } catch {}
   }
@@ -46,13 +52,14 @@ export default function AddProductPage() {
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
+  // El lector USB llena el campo y al presionar Enter busca si ya existe
   const handleBarcodeKeyDown = async (e) => {
     if (e.key !== 'Enter') return
     e.preventDefault()
     if (!form.codigo_barras) return
     try {
       const { data } = await api.get(`/api/productos/barcode/${form.codigo_barras}`)
-      toast.success('Producto encontrado')
+      toast.success('Producto encontrado, cargando datos para editar...')
       setEditId(data.id)
       setForm(f => ({ ...f, ...data }))
     } catch {
@@ -66,10 +73,10 @@ export default function AddProductPage() {
     try {
       if (editId) {
         await api.put(`/api/productos/${editId}`, form)
-        toast.success('Producto actualizado')
+        toast.success('Producto actualizado correctamente')
       } else {
         await api.post('/api/productos', form)
-        toast.success('Producto creado')
+        toast.success('Producto creado correctamente')
       }
       navigate('/products')
     } catch (err) {
@@ -80,15 +87,19 @@ export default function AddProductPage() {
   }
 
   return (
-    <PageLayout title={editId ? 'Editar Producto' : 'Ingresar Nuevo Producto'}>
+    <PageLayout title={editId ? 'Editar Producto' : 'Nuevo Producto'}>
       <div className="max-w-3xl mx-auto py-4">
+
+        {/* Scanner */}
         <section className="bg-surface-container-low p-8 rounded-xl flex flex-col items-center gap-4 text-center mb-8">
           <div className="w-14 h-14 bg-primary-fixed flex items-center justify-center rounded-full text-primary">
             <span className="material-symbols-outlined text-4xl">barcode_scanner</span>
           </div>
           <div className="w-full max-w-sm">
             <h2 className="font-semibold text-lg mb-1">Escanear Código de Barras</h2>
-            <p className="text-xs text-on-surface-variant mb-3">El lector USB llena este campo automáticamente. Presiona Enter para buscar.</p>
+            <p className="text-xs text-on-surface-variant mb-3">
+              Si el producto ya existe, se cargará para editar. Si no, completa el formulario para crearlo.
+            </p>
             <input
               ref={barcodeRef}
               value={form.codigo_barras}
@@ -100,8 +111,17 @@ export default function AddProductPage() {
           </div>
         </section>
 
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-sm border border-zinc-100 space-y-8">
-          <h3 className="font-bold text-xl border-b pb-4">Información General</h3>
+          <div className="flex items-center justify-between border-b pb-4">
+            <h3 className="font-bold text-xl">Información del Producto</h3>
+            {!editId && (
+              <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-semibold">
+                Para agregar stock usa "Registrar Entrada"
+              </span>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="col-span-full">
               <label className="block text-sm font-semibold text-on-surface-variant mb-2">Nombre del Producto *</label>
@@ -109,12 +129,14 @@ export default function AddProductPage() {
                 className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Ej: Catéter Intravenoso 18G" />
             </div>
+
             <div>
               <label className="block text-sm font-semibold text-on-surface-variant mb-2">SKU *</label>
               <input required value={form.sku} onChange={e => set('sku', e.target.value)}
                 className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary font-mono"
                 placeholder="MED-CAT-18G-001" />
             </div>
+
             <div>
               <label className="block text-sm font-semibold text-on-surface-variant mb-2">Categoría</label>
               <select value={form.categoria_id} onChange={e => set('categoria_id', e.target.value)}
@@ -123,23 +145,27 @@ export default function AddProductPage() {
                 {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
+
             <div>
               <label className="block text-sm font-semibold text-on-surface-variant mb-2">Unidad de Medida</label>
               <input value={form.unidad_medida} onChange={e => set('unidad_medida', e.target.value)}
                 className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary"
                 placeholder="unidad, caja, vial..." />
             </div>
+
             <div>
               <label className="block text-sm font-semibold text-on-surface-variant mb-2">Stock Mínimo</label>
               <input type="number" min="0" value={form.stock_minimo} onChange={e => set('stock_minimo', e.target.value)}
                 className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary" />
             </div>
+
             <div className="col-span-full">
               <label className="block text-sm font-semibold text-on-surface-variant mb-2">Descripción</label>
               <textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)} rows={3}
                 className="w-full px-4 py-3 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary resize-none"
                 placeholder="Descripción del producto..." />
             </div>
+
             <div className="col-span-full flex items-center gap-3">
               <input type="checkbox" id="tiene_venc" checked={form.tiene_vencimiento}
                 onChange={e => set('tiene_vencimiento', e.target.checked)} className="w-5 h-5 accent-primary" />
@@ -149,39 +175,31 @@ export default function AddProductPage() {
             </div>
           </div>
 
-          {!editId && (
-            <>
-              <h3 className="font-bold text-xl border-b pb-4 pt-4">Lote Inicial</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-on-surface-variant mb-2">Número de Lote</label>
-                  <input value={form.numero_lote} onChange={e => set('numero_lote', e.target.value)}
-                    className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary font-mono"
-                    placeholder="LOT-240101-A" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-on-surface-variant mb-2">Fecha de Vencimiento</label>
-                  <input type="date" value={form.fecha_vencimiento} onChange={e => set('fecha_vencimiento', e.target.value)}
-                    className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-on-surface-variant mb-2">Cantidad Inicial</label>
-                  <input type="number" min="1" value={form.cantidad_inicial} onChange={e => set('cantidad_inicial', e.target.value)}
-                    className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="0" />
-                </div>
-              </div>
-            </>
-          )}
-
           <div className="flex justify-end gap-4 pt-4">
-            <button type="button" onClick={() => navigate('/products')} className="px-8 py-3 font-bold text-primary">Cancelar</button>
+            <button type="button" onClick={() => navigate('/products')}
+              className="px-8 py-3 font-bold text-primary">
+              Cancelar
+            </button>
             <button type="submit" disabled={loading}
               className="px-10 py-3 bg-primary text-on-primary font-bold rounded-lg shadow-lg hover:opacity-90 disabled:opacity-60 transition-all">
-              {loading ? 'Guardando...' : editId ? 'Actualizar Producto' : 'Guardar Producto'}
+              {loading ? 'Guardando...' : editId ? 'Actualizar Producto' : 'Crear Producto'}
             </button>
           </div>
         </form>
+
+        {/* Acceso rápido a Registrar Entrada */}
+        {!editId && (
+          <div className="mt-6 p-5 bg-secondary-fixed rounded-xl flex items-center justify-between">
+            <div>
+              <p className="font-bold text-on-secondary-fixed-variant">¿Ya tienes el producto creado?</p>
+              <p className="text-sm text-on-secondary-fixed-variant/70">Usa "Registrar Entrada" para agregar stock con número de lote.</p>
+            </div>
+            <button onClick={() => navigate('/register-entry')}
+              className="px-6 py-3 bg-secondary text-on-secondary font-bold rounded-lg hover:opacity-90 transition-all whitespace-nowrap">
+              Registrar Entrada →
+            </button>
+          </div>
+        )}
       </div>
     </PageLayout>
   )
