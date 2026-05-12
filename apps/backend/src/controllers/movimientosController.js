@@ -17,25 +17,19 @@ async function registrarEntrada(req, res, next) {
 }
 
 // POST /api/movimientos/salida
+// El precio se toma automáticamente del producto (precio_descuento si existe, sino precio_unitario)
 async function registrarSalida(req, res, next) {
-  const {
-    producto_id, cantidad, motivo, observacion,
-    precio_unitario, descuento_porcentaje, descuento_monto
-  } = req.body
+  const { producto_id, cantidad, motivo, observacion } = req.body
 
   if (!producto_id || !cantidad) {
     return res.status(400).json({ error: 'producto_id y cantidad son requeridos' })
   }
   try {
+    // Pasar precio NULL para que la función SQL use el precio vigente del producto
     const { rows } = await pool.query(
-      `SELECT fn_registrar_salida($1,$2,$3,$4,$5,$6,$7,$8) AS movimiento_id`,
-      [
-        producto_id, Number(cantidad), motivo || 'VENTA',
-        observacion || null, req.user.email,
-        Number(precio_unitario)      || 0,
-        Number(descuento_porcentaje) || 0,
-        Number(descuento_monto)      || 0,
-      ]
+      `SELECT fn_registrar_salida($1,$2,$3,$4,$5,NULL,0,0) AS movimiento_id`,
+      [producto_id, Number(cantidad), motivo || 'VENTA',
+       observacion || null, req.user.email]
     )
     res.status(201).json({ message: 'Salida registrada correctamente (FIFO)', movimientos: rows })
   } catch (err) {
@@ -46,7 +40,7 @@ async function registrarSalida(req, res, next) {
   }
 }
 
-// GET /api/movimientos?producto_id=&limit=50
+// GET /api/movimientos
 async function getMovimientos(req, res, next) {
   const { producto_id, limit = 50 } = req.query
   try {
@@ -76,7 +70,6 @@ async function getAlertas(req, res, next) {
 }
 
 // GET /api/movimientos/dashboard-stats
-// Ahora incluye valor_total_inventario
 async function getDashboardStats(req, res, next) {
   try {
     const [total, critico, alertasVenc, movHoy, ventasHoy, valorInventario] = await Promise.all([
@@ -99,7 +92,6 @@ async function getDashboardStats(req, res, next) {
 }
 
 // GET /api/movimientos/valor-inventario
-// Detalle por producto para la tabla de Productos
 async function getValorInventario(req, res, next) {
   try {
     const { rows } = await pool.query(`SELECT * FROM v_valor_inventario`)

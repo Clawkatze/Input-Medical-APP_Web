@@ -2,34 +2,25 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import { PageLayout } from '../components/Layout'
-import { useAuth } from '../context/AuthContext'
-import { formatCLP, calcularTotal } from '../services/precio'
+import { formatCLP, precioVigente, tieneDescuento } from '../services/precio'
 import toast from 'react-hot-toast'
 
 const MOTIVOS = ['VENTA', 'TRASLADO', 'MERMA', 'AJUSTE']
 
 export default function RegisterSalePage() {
-  const [busqueda,            setBusqueda]            = useState('')
-  const [producto,            setProducto]            = useState(null)
-  const [cantidad,            setCantidad]            = useState('')
-  const [motivo,              setMotivo]              = useState('VENTA')
-  const [precioUnitario,      setPrecioUnitario]      = useState('')
-  const [descuentoPorcentaje, setDescuentoPorcentaje] = useState('')
-  const [descuentoMonto,      setDescuentoMonto]      = useState('')
-  const [loading,             setLoading]             = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [producto, setProducto] = useState(null)
+  const [cantidad, setCantidad] = useState('')
+  const [motivo,   setMotivo]   = useState('VENTA')
+  const [loading,  setLoading]  = useState(false)
   const barcodeRef = useRef(null)
   const navigate   = useNavigate()
-  const { user }   = useAuth()
 
   async function buscarProducto(query) {
     if (!query.trim()) return
     try {
       const { data } = await api.get(`/api/productos/barcode/${encodeURIComponent(query)}`)
       setProducto(data)
-      // Pre-cargar el precio del producto
-      setPrecioUnitario(data.precio_unitario || '')
-      setDescuentoPorcentaje('')
-      setDescuentoMonto('')
       setCantidad('')
       toast.success(`Producto encontrado: ${data.nombre}`)
     } catch {
@@ -42,33 +33,22 @@ export default function RegisterSalePage() {
     if (e.key === 'Enter') { e.preventDefault(); buscarProducto(busqueda) }
   }
 
-  // Calcular resumen económico en tiempo real
-  const resumen = calcularTotal({
-    precio_unitario:      precioUnitario,
-    cantidad,
-    descuento_porcentaje: descuentoPorcentaje,
-    descuento_monto:      descuentoMonto,
-  })
-
-  const nuevoStock = () => {
-    if (!producto || !cantidad) return producto?.stock_actual ?? 0
-    return Math.max(0, producto.stock_actual - Number(cantidad))
-  }
+  const precio       = precioVigente(producto)
+  const conDescuento = tieneDescuento(producto)
+  const subtotal     = precio * (Number(cantidad) || 0)
+  const nuevoStock   = () => !producto || !cantidad ? (producto?.stock_actual ?? 0) : Math.max(0, producto.stock_actual - Number(cantidad))
 
   async function handleRegistrar() {
-    if (!producto)                              { toast.error('Selecciona un producto'); return }
-    if (!cantidad || Number(cantidad) <= 0)     { toast.error('Ingresa una cantidad válida'); return }
-    if (Number(cantidad) > producto.stock_actual) { toast.error('Stock insuficiente'); return }
+    if (!producto)                                { toast.error('Selecciona un producto'); return }
+    if (!cantidad || Number(cantidad) <= 0)        { toast.error('Ingresa una cantidad válida'); return }
+    if (Number(cantidad) > producto.stock_actual)  { toast.error('Stock insuficiente'); return }
 
     setLoading(true)
     try {
       await api.post('/api/movimientos/salida', {
-        producto_id:          producto.id,
-        cantidad:             Number(cantidad),
+        producto_id: producto.id,
+        cantidad:    Number(cantidad),
         motivo,
-        precio_unitario:      Number(precioUnitario)      || 0,
-        descuento_porcentaje: Number(descuentoPorcentaje) || 0,
-        descuento_monto:      Number(descuentoMonto)      || 0,
       })
       toast.success('Salida registrada correctamente')
       navigate(`/products/${producto.id}/history`)
@@ -111,9 +91,24 @@ export default function RegisterSalePage() {
                     {producto.stock_actual > 0 ? 'En Stock' : 'Sin Stock'}
                   </span>
                   <h3 className="text-3xl font-black mt-2">{producto.nombre}</h3>
-                  <p className="text-on-surface-variant">SKU: <span className="font-mono">{producto.sku}</span></p>
-                  <p className="text-sm text-on-surface-variant mt-1">
-                    Precio base: <span className="font-bold text-primary">{formatCLP(producto.precio_unitario)}</span>
+                  <p className="text-on-surface-variant text-sm">SKU: <span className="font-mono">{producto.sku}</span></p>
+
+                  {/* Precio vigente con indicador de descuento */}
+                  <div className="mt-3 flex items-center gap-3">
+                    {conDescuento && (
+                      <span className="line-through text-zinc-400 text-sm">{formatCLP(producto.precio_unitario)}</span>
+                    )}
+                    <span className={`text-2xl font-black ${conDescuento ? 'text-tertiary' : 'text-primary'}`}>
+                      {formatCLP(precio)}
+                    </span>
+                    {conDescuento && (
+                      <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black rounded-full uppercase">
+                        Precio con descuento
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    Este precio se registrará automáticamente en la salida
                   </p>
                 </div>
                 <div className="text-right">
@@ -129,13 +124,11 @@ export default function RegisterSalePage() {
             </section>
           )}
 
-          {/* Formulario de salida */}
+          {/* Formulario */}
           {producto && (
             <section className="bg-white rounded-xl p-8 shadow-sm space-y-6">
               <h3 className="text-xl font-bold border-b pb-4">Detalles de la Salida</h3>
-
               <div className="grid grid-cols-2 gap-6">
-                {/* Cantidad */}
                 <div>
                   <label className="text-xs font-bold uppercase text-on-surface-variant mb-2 block">Cantidad *</label>
                   <input type="number" min="1" max={producto.stock_actual}
@@ -144,54 +137,6 @@ export default function RegisterSalePage() {
                     placeholder="0" />
                 </div>
 
-                {/* Precio unitario (editable por venta) */}
-                <div>
-                  <label className="text-xs font-bold uppercase text-on-surface-variant mb-2 block">
-                    Precio Unitario (CLP)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">$</span>
-                    <input type="number" min="0"
-                      value={precioUnitario}
-                      onChange={e => setPrecioUnitario(e.target.value)}
-                      className="w-full bg-zinc-100 rounded-lg pl-7 pr-3 py-3 font-bold text-lg outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="0" />
-                  </div>
-                  <p className="text-[10px] text-on-surface-variant mt-1">Pre-cargado desde el producto, editable por venta</p>
-                </div>
-
-                {/* Descuento % */}
-                <div>
-                  <label className="text-xs font-bold uppercase text-on-surface-variant mb-2 block">
-                    Descuento (%)
-                  </label>
-                  <div className="relative">
-                    <input type="number" min="0" max="100" step="0.1"
-                      value={descuentoPorcentaje}
-                      onChange={e => { setDescuentoPorcentaje(e.target.value); setDescuentoMonto('') }}
-                      className="w-full bg-zinc-100 rounded-lg px-3 pr-8 py-3 font-bold text-lg outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="0" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">%</span>
-                  </div>
-                </div>
-
-                {/* Descuento monto fijo */}
-                <div>
-                  <label className="text-xs font-bold uppercase text-on-surface-variant mb-2 block">
-                    Descuento ($ monto fijo)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">$</span>
-                    <input type="number" min="0"
-                      value={descuentoMonto}
-                      onChange={e => { setDescuentoMonto(e.target.value); setDescuentoPorcentaje('') }}
-                      className="w-full bg-zinc-100 rounded-lg pl-7 pr-3 py-3 font-bold text-lg outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="0" />
-                  </div>
-                  <p className="text-[10px] text-on-surface-variant mt-1">Se aplica el mayor entre % y $ fijo</p>
-                </div>
-
-                {/* Motivo */}
                 <div className="col-span-full">
                   <label className="text-xs font-bold uppercase text-on-surface-variant mb-3 block">Motivo</label>
                   <div className="flex gap-2">
@@ -203,40 +148,41 @@ export default function RegisterSalePage() {
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Resumen económico inline */}
-              {cantidad && precioUnitario && (
-                <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
-                  <h4 className="font-bold text-sm mb-3 text-on-surface-variant uppercase tracking-wide">Resumen de la Venta</h4>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-xs text-on-surface-variant mb-1">Subtotal</p>
-                      <p className="font-bold text-lg">{formatCLP(resumen.subtotal)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-on-surface-variant mb-1">Descuento</p>
-                      <p className="font-bold text-lg text-error">-{formatCLP(resumen.descuento)}</p>
-                    </div>
-                    <div className="bg-primary/5 rounded-lg py-2">
-                      <p className="text-xs text-on-surface-variant mb-1">Total</p>
-                      <p className="font-black text-2xl text-primary">{formatCLP(resumen.total)}</p>
+                {/* Resumen económico */}
+                {cantidad && precio > 0 && (
+                  <div className="col-span-full bg-zinc-50 rounded-xl p-5 border border-zinc-200">
+                    <h4 className="font-bold text-sm mb-3 text-on-surface-variant uppercase tracking-wide">Resumen de la Venta</h4>
+                    <div className="flex items-center justify-between">
+                      <div className="text-center">
+                        <p className="text-xs text-on-surface-variant mb-1">Precio unitario</p>
+                        <p className="font-bold">{formatCLP(precio)}</p>
+                      </div>
+                      <span className="text-zinc-400 font-bold text-xl">×</span>
+                      <div className="text-center">
+                        <p className="text-xs text-on-surface-variant mb-1">Cantidad</p>
+                        <p className="font-bold">{cantidad}</p>
+                      </div>
+                      <span className="text-zinc-400 font-bold text-xl">=</span>
+                      <div className="text-center bg-primary/5 rounded-lg px-6 py-3">
+                        <p className="text-xs text-on-surface-variant mb-1">Total</p>
+                        <p className="font-black text-2xl text-primary">{formatCLP(subtotal)}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </section>
           )}
         </div>
 
         {/* Panel lateral */}
-        <div className="w-[300px] shrink-0">
+        <div className="w-[280px] shrink-0">
           <section className="bg-zinc-900 text-white rounded-2xl p-6 shadow-xl sticky top-24">
             <h3 className="text-base font-bold mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">analytics</span>
               Resumen
             </h3>
-
             <div className="space-y-4">
               <div className="flex justify-between border-b border-white/10 pb-3">
                 <span className="text-zinc-400 text-sm">Stock Actual</span>
@@ -250,26 +196,15 @@ export default function RegisterSalePage() {
                 <span className="text-zinc-400 text-sm">Nuevo Stock</span>
                 <span className="font-bold text-secondary-fixed">{producto ? nuevoStock() : '—'}</span>
               </div>
-
-              {/* Resumen económico en panel */}
-              {cantidad && precioUnitario && (
-                <>
-                  <div className="flex justify-between border-b border-white/10 pb-3">
-                    <span className="text-zinc-400 text-sm">Subtotal</span>
-                    <span className="font-bold">{formatCLP(resumen.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-white/10 pb-3">
-                    <span className="text-zinc-400 text-sm">Descuento</span>
-                    <span className="font-bold text-error">-{formatCLP(resumen.descuento)}</span>
-                  </div>
-                  <div className="flex justify-between pt-2">
-                    <span className="text-zinc-300 font-bold">TOTAL</span>
-                    <span className="text-2xl font-black text-secondary-fixed">{formatCLP(resumen.total)}</span>
-                  </div>
-                </>
+              {cantidad && precio > 0 && (
+                <div className="flex justify-between pt-2">
+                  <span className="text-zinc-300 font-bold">TOTAL</span>
+                  <span className={`text-2xl font-black ${conDescuento ? 'text-yellow-300' : 'text-secondary-fixed'}`}>
+                    {formatCLP(subtotal)}
+                  </span>
+                </div>
               )}
             </div>
-
             <button onClick={handleRegistrar} disabled={loading || !producto}
               className="w-full mt-8 py-4 bg-primary text-white font-bold rounded-xl shadow-lg hover:opacity-90 disabled:opacity-50 transition-all">
               {loading ? 'Registrando...' : 'Registrar Salida'}

@@ -5,7 +5,8 @@ async function getAll(req, res, next) {
   const { busqueda } = req.query
   try {
     let query = `
-      SELECT p.*, c.nombre AS categoria_nombre
+      SELECT p.*, c.nombre AS categoria_nombre,
+             COALESCE(p.precio_descuento, p.precio_unitario) AS precio_vigente
       FROM productos p
       LEFT JOIN categorias c ON c.id = p.categoria_id
       WHERE p.activo = true
@@ -25,7 +26,8 @@ async function getAll(req, res, next) {
 async function getById(req, res, next) {
   try {
     const { rows } = await pool.query(
-      `SELECT p.*, c.nombre AS categoria_nombre
+      `SELECT p.*, c.nombre AS categoria_nombre,
+              COALESCE(p.precio_descuento, p.precio_unitario) AS precio_vigente
        FROM productos p
        LEFT JOIN categorias c ON c.id = p.categoria_id
        WHERE p.id = $1`,
@@ -40,7 +42,8 @@ async function getById(req, res, next) {
 async function getByBarcode(req, res, next) {
   try {
     const { rows } = await pool.query(
-      `SELECT p.*, c.nombre AS categoria_nombre
+      `SELECT p.*, c.nombre AS categoria_nombre,
+              COALESCE(p.precio_descuento, p.precio_unitario) AS precio_vigente
        FROM productos p
        LEFT JOIN categorias c ON c.id = p.categoria_id
        WHERE (p.codigo_barras = $1 OR p.sku = $1) AND p.activo = true`,
@@ -56,7 +59,7 @@ async function create(req, res, next) {
   const {
     codigo_barras, sku, nombre, descripcion,
     categoria_id, stock_minimo, unidad_medida,
-    tiene_vencimiento, precio_unitario
+    tiene_vencimiento, precio_unitario, precio_descuento
   } = req.body
 
   const client = await pool.connect()
@@ -65,13 +68,16 @@ async function create(req, res, next) {
     const { rows } = await client.query(
       `INSERT INTO productos (
         codigo_barras, sku, nombre, descripcion, categoria_id,
-        stock_actual, stock_minimo, unidad_medida, tiene_vencimiento, precio_unitario
-      ) VALUES ($1,$2,$3,$4,$5, 0,$6,$7,$8,$9)
+        stock_actual, stock_minimo, unidad_medida, tiene_vencimiento,
+        precio_unitario, precio_descuento
+      ) VALUES ($1,$2,$3,$4,$5, 0,$6,$7,$8,$9,$10)
        RETURNING *`,
       [
         codigo_barras || null, sku, nombre, descripcion || null, categoria_id || null,
         stock_minimo || 10, unidad_medida || 'unidad',
-        tiene_vencimiento ?? true, precio_unitario || 0
+        tiene_vencimiento ?? true,
+        precio_unitario || 0,
+        precio_descuento || null
       ]
     )
     await client.query('COMMIT')
@@ -89,20 +95,24 @@ async function update(req, res, next) {
   const {
     codigo_barras, sku, nombre, descripcion,
     categoria_id, stock_minimo, unidad_medida,
-    tiene_vencimiento, precio_unitario
+    tiene_vencimiento, precio_unitario, precio_descuento
   } = req.body
   try {
     const { rows } = await pool.query(
       `UPDATE productos
        SET codigo_barras=$1, sku=$2, nombre=$3, descripcion=$4,
            categoria_id=$5, stock_minimo=$6, unidad_medida=$7,
-           tiene_vencimiento=$8, precio_unitario=$9, updated_at=NOW()
-       WHERE id=$10 AND activo=true
+           tiene_vencimiento=$8, precio_unitario=$9, precio_descuento=$10,
+           updated_at=NOW()
+       WHERE id=$11 AND activo=true
        RETURNING *`,
       [
         codigo_barras || null, sku, nombre, descripcion || null,
         categoria_id || null, stock_minimo || 10, unidad_medida || 'unidad',
-        tiene_vencimiento ?? true, precio_unitario || 0, req.params.id
+        tiene_vencimiento ?? true,
+        precio_unitario || 0,
+        precio_descuento || null,
+        req.params.id
       ]
     )
     if (!rows[0]) return res.status(404).json({ error: 'Producto no encontrado' })
@@ -110,7 +120,7 @@ async function update(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// DELETE /api/productos/:id (soft delete)
+// DELETE /api/productos/:id
 async function remove(req, res, next) {
   try {
     const { rowCount } = await pool.query(
