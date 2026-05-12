@@ -16,12 +16,9 @@ async function getAll(req, res, next) {
       query += ` AND (p.nombre ILIKE $1 OR p.sku ILIKE $1 OR p.codigo_barras ILIKE $1)`
     }
     query += ' ORDER BY p.nombre'
-
     const { rows } = await pool.query(query, params)
     res.json(rows)
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // GET /api/productos/:id
@@ -36,9 +33,7 @@ async function getById(req, res, next) {
     )
     if (!rows[0]) return res.status(404).json({ error: 'Producto no encontrado' })
     res.json(rows[0])
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // GET /api/productos/barcode/:codigo
@@ -53,45 +48,34 @@ async function getByBarcode(req, res, next) {
     )
     if (!rows[0]) return res.status(404).json({ error: 'Producto no encontrado' })
     res.json(rows[0])
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // POST /api/productos
 async function create(req, res, next) {
   const {
     codigo_barras, sku, nombre, descripcion,
-    categoria_id, stock_minimo, unidad_medida, tiene_vencimiento,
-    numero_lote, fecha_vencimiento, cantidad_inicial
+    categoria_id, stock_minimo, unidad_medida,
+    tiene_vencimiento, precio_unitario
   } = req.body
 
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-
-    // Insertar producto con stock 0
     const { rows } = await client.query(
-      `INSERT INTO productos (codigo_barras, sku, nombre, descripcion, categoria_id,
-        stock_actual, stock_minimo, unidad_medida, tiene_vencimiento)
-       VALUES ($1,$2,$3,$4,$5, 0,$6,$7,$8)
+      `INSERT INTO productos (
+        codigo_barras, sku, nombre, descripcion, categoria_id,
+        stock_actual, stock_minimo, unidad_medida, tiene_vencimiento, precio_unitario
+      ) VALUES ($1,$2,$3,$4,$5, 0,$6,$7,$8,$9)
        RETURNING *`,
-      [codigo_barras || null, sku, nombre, descripcion || null, categoria_id || null,
-       stock_minimo || 10, unidad_medida || 'unidad', tiene_vencimiento ?? true]
+      [
+        codigo_barras || null, sku, nombre, descripcion || null, categoria_id || null,
+        stock_minimo || 10, unidad_medida || 'unidad',
+        tiene_vencimiento ?? true, precio_unitario || 0
+      ]
     )
-    const producto = rows[0]
-
-    // Si se envió un lote inicial, registrar entrada
-    if (numero_lote && cantidad_inicial && Number(cantidad_inicial) > 0) {
-      await client.query(
-        `SELECT fn_registrar_entrada($1,$2,$3,$4,$5,$6)`,
-        [producto.id, numero_lote, fecha_vencimiento || null,
-         Number(cantidad_inicial), 'Ingreso inicial', req.user.email]
-      )
-    }
-
     await client.query('COMMIT')
-    res.status(201).json(producto)
+    res.status(201).json(rows[0])
   } catch (err) {
     await client.query('ROLLBACK')
     next(err)
@@ -104,28 +88,29 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   const {
     codigo_barras, sku, nombre, descripcion,
-    categoria_id, stock_minimo, unidad_medida, tiene_vencimiento
+    categoria_id, stock_minimo, unidad_medida,
+    tiene_vencimiento, precio_unitario
   } = req.body
   try {
     const { rows } = await pool.query(
       `UPDATE productos
        SET codigo_barras=$1, sku=$2, nombre=$3, descripcion=$4,
            categoria_id=$5, stock_minimo=$6, unidad_medida=$7,
-           tiene_vencimiento=$8, updated_at=NOW()
-       WHERE id=$9 AND activo=true
+           tiene_vencimiento=$8, precio_unitario=$9, updated_at=NOW()
+       WHERE id=$10 AND activo=true
        RETURNING *`,
-      [codigo_barras || null, sku, nombre, descripcion || null,
-       categoria_id || null, stock_minimo || 10, unidad_medida || 'unidad',
-       tiene_vencimiento ?? true, req.params.id]
+      [
+        codigo_barras || null, sku, nombre, descripcion || null,
+        categoria_id || null, stock_minimo || 10, unidad_medida || 'unidad',
+        tiene_vencimiento ?? true, precio_unitario || 0, req.params.id
+      ]
     )
     if (!rows[0]) return res.status(404).json({ error: 'Producto no encontrado' })
     res.json(rows[0])
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
-// DELETE /api/productos/:id  (soft delete)
+// DELETE /api/productos/:id (soft delete)
 async function remove(req, res, next) {
   try {
     const { rowCount } = await pool.query(
@@ -134,9 +119,7 @@ async function remove(req, res, next) {
     )
     if (!rowCount) return res.status(404).json({ error: 'Producto no encontrado' })
     res.json({ message: 'Producto desactivado correctamente' })
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 module.exports = { getAll, getById, getByBarcode, create, update, remove }
