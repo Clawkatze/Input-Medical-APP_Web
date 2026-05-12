@@ -1,17 +1,14 @@
 -- =============================================================================
 -- Input Medical - Datos de demostración
--- Archivo: supabase/migrations/002_seed.sql
--- Ejecutar DESPUÉS de 001_schema.sql
+-- Migration 002: Seed de productos y lotes de ejemplo
 -- =============================================================================
 
 -- ─── Usuario administrador por defecto ───────────────────────────────────────
--- Contraseña: admin123  (hash bcrypt generado con bcryptjs rounds=10)
+-- Contraseña: admin123 (hash bcrypt generado con bcryptjs rounds=10)
+-- Para regenerar: node -e "const b=require('bcryptjs'); b.hash('admin123',10).then(console.log)"
 INSERT INTO usuarios (email, nombre, password_hash, rol) VALUES
   ('admin@inputmedical.cl', 'Administrador', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
 ON CONFLICT (email) DO NOTHING;
-
--- NOTA: Si quieres cambiar la contraseña, genera un nuevo hash con:
---   node -e "const b=require('bcryptjs'); b.hash('tu_nueva_clave',10).then(console.log)"
 
 -- ─── Categorías ───────────────────────────────────────────────────────────────
 INSERT INTO categorias (nombre, descripcion) VALUES
@@ -43,30 +40,28 @@ SELECT '780123456793','MED-SUT-CUR-45','Sutura Mecánica Curva 45mm','Sutura mec
 FROM categorias c WHERE c.nombre = 'INSUMOS' ON CONFLICT (sku) DO NOTHING;
 
 -- ─── Lotes de demo ────────────────────────────────────────────────────────────
--- Catéter 18G - lote normal con buen stock
 INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
 SELECT p.id,'LOT-240101-A','2026-12-31',1250,1250 FROM productos p WHERE p.sku='MED-CAT-18G-001'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
 
--- Catéter Triple Lumen - dos lotes para demostrar FIFO
--- Este vence primero → será consumido primero
 INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
 SELECT p.id,'LOT-230910-A','2025-03-01',30,20 FROM productos p WHERE p.sku='MED-CAT-3L-2024'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
 
--- Este vence después → se consumirá segundo
 INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
 SELECT p.id,'LOT-241201-B','2027-06-30',30,25 FROM productos p WHERE p.sku='MED-CAT-3L-2024'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
 
--- Sutura - lote VENCIDO (para demo de alertas)
 INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
 SELECT p.id,'LOT-230101-X','2024-04-09',8,8 FROM productos p WHERE p.sku='MED-SUT-CUR-45'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
 
--- Insulina
 INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
 SELECT p.id,'LOT-240601-A','2026-08-15',180,180 FROM productos p WHERE p.sku='MED-INS-HUM-001'
+ON CONFLICT (producto_id, numero_lote) DO NOTHING;
+
+INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
+SELECT p.id,'LOT-240101-A','2026-12-31',3200,3200 FROM productos p WHERE p.sku='MED-JER-5ML-001'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
 
 -- ─── Movimientos de demo ──────────────────────────────────────────────────────
@@ -74,6 +69,11 @@ INSERT INTO movimientos (producto_id, lote_id, tipo, cantidad, motivo, observaci
 SELECT p.id,l.id,'ENTRADA',1250,'COMPRA','Ingreso inicial','admin@inputmedical.cl'
 FROM productos p JOIN lotes l ON l.producto_id=p.id AND l.numero_lote='LOT-240101-A'
 WHERE p.sku='MED-CAT-18G-001';
+
+INSERT INTO movimientos (producto_id, lote_id, tipo, cantidad, motivo, observacion, usuario_email)
+SELECT p.id,l.id,'ENTRADA',3200,'COMPRA','Ingreso inicial','admin@inputmedical.cl'
+FROM productos p JOIN lotes l ON l.producto_id=p.id AND l.numero_lote='LOT-240101-A'
+WHERE p.sku='MED-JER-5ML-001';
 
 INSERT INTO movimientos (producto_id, lote_id, tipo, cantidad, motivo, observacion, usuario_email)
 SELECT p.id,l.id,'SALIDA',10,'VENTA','Hospital Clínico San Borja','admin@inputmedical.cl'
