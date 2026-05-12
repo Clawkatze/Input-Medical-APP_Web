@@ -4,10 +4,11 @@ const ctrl   = require('../controllers/movimientosController')
 
 router.use(auth)
 
-router.get('/',               ctrl.getMovimientos)
-router.get('/alertas',        ctrl.getAlertas)
-router.get('/dashboard-stats', ctrl.getDashboardStats)
-router.post('/entrada',       ctrl.registrarEntrada)
-router.post('/salida',        ctrl.registrarSalida)
+router.get('/dashboard-stats',   ctrl.getDashboardStats)
+router.get('/alertas',           ctrl.getAlertas)
+router.get('/valor-inventario',  ctrl.getValorInventario)
+router.get('/',                  ctrl.getMovimientos)
+router.post('/entrada',          ctrl.registrarEntrada)
+router.post('/salida',           ctrl.registrarSalida)
 
 module.exports = router

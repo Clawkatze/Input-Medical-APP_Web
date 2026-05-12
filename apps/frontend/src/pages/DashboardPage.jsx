@@ -4,10 +4,11 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import api from '../services/api'
 import { PageLayout } from '../components/Layout'
+import { formatCLP } from '../services/precio'
 import toast from 'react-hot-toast'
 
 export default function DashboardPage() {
-  const [stats,       setStats]       = useState({ total_productos: 0, stock_critico: 0, proximos_vencer: 0, movimientos_hoy: 0 })
+  const [stats,       setStats]       = useState({ total_productos: 0, stock_critico: 0, proximos_vencer: 0, movimientos_hoy: 0, ventas_hoy: 0, valor_total_inventario: 0 })
   const [movimientos, setMovimientos] = useState([])
   const [alertas,     setAlertas]     = useState([])
   const [loading,     setLoading]     = useState(true)
@@ -35,17 +36,17 @@ export default function DashboardPage() {
     try {
       const res = await api.get('/api/reportes/movimientos', { responseType: 'blob' })
       const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a'); a.href = url
-      a.download = 'movimientos.csv'; a.click()
+      const a = document.createElement('a')
+      a.href = url; a.download = 'movimientos.csv'; a.click()
       URL.revokeObjectURL(url)
     } catch { toast.error('Error al exportar') }
   }
 
   const STAT_CARDS = [
-    { label: 'Total Productos',   val: stats.total_productos,  sub: 'productos activos',   color: 'text-primary',   icon: 'inventory' },
-    { label: 'Stock Crítico',     val: stats.stock_critico,    sub: 'Acción requerida',    color: 'text-error',     icon: 'trending_down' },
-    { label: 'Próximos a Vencer', val: stats.proximos_vencer,  sub: 'Próximos 30 días',   color: 'text-tertiary',  icon: 'schedule' },
-    { label: 'Movimientos Hoy',   val: stats.movimientos_hoy,  sub: 'Transacciones',       color: 'text-secondary', icon: 'sync_alt' },
+    { label: 'Total Productos',   val: stats.total_productos,  sub: 'productos activos',  color: 'text-primary',   icon: 'inventory' },
+    { label: 'Stock Crítico',     val: stats.stock_critico,    sub: 'Acción requerida',   color: 'text-error',     icon: 'trending_down' },
+    { label: 'Próximos a Vencer', val: stats.proximos_vencer,  sub: 'Próximos 30 días',  color: 'text-tertiary',  icon: 'schedule' },
+    { label: 'Movimientos Hoy',   val: stats.movimientos_hoy,  sub: 'Transacciones',      color: 'text-secondary', icon: 'sync_alt' },
   ]
 
   return (
@@ -60,7 +61,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* 4 stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
         {STAT_CARDS.map((item, idx) => (
           <div key={idx} className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15 hover:bg-surface-bright transition-all">
             <p className="text-on-surface-variant font-semibold text-sm">{item.label}</p>
@@ -73,6 +75,38 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Banners de totales económicos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {/* Ventas del día */}
+        <div className="bg-gradient-to-r from-secondary/5 to-secondary/10 p-6 rounded-xl border border-secondary/20 flex items-center justify-between">
+          <div>
+            <p className="text-on-surface-variant font-semibold text-sm">Ventas del Día</p>
+            <p className="text-xs text-on-surface-variant mt-1">Total facturado hoy</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-secondary text-3xl">payments</span>
+            <span className="text-3xl font-black text-secondary">
+              {loading ? '—' : formatCLP(stats.ventas_hoy || 0)}
+            </span>
+          </div>
+        </div>
+
+        {/* Valor total inventario */}
+        <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-6 rounded-xl border border-primary/20 flex items-center justify-between">
+          <div>
+            <p className="text-on-surface-variant font-semibold text-sm">Valor Total Inventario</p>
+            <p className="text-xs text-on-surface-variant mt-1">Stock actual × precio unitario</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary text-3xl">account_balance_wallet</span>
+            <span className="text-3xl font-black text-primary">
+              {loading ? '—' : formatCLP(stats.valor_total_inventario || 0)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabla movimientos recientes */}
       <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/15 overflow-hidden">
         <div className="p-6 flex items-center justify-between">
           <h2 className="text-xl font-bold">Movimientos Recientes</h2>
@@ -87,15 +121,16 @@ export default function DashboardPage() {
                 <th className="px-6 py-4">Fecha/Hora</th>
                 <th className="px-6 py-4">Tipo</th>
                 <th className="px-6 py-4">Producto</th>
-                <th className="px-6 py-4">Cantidad</th>
+                <th className="px-6 py-4">Cant.</th>
+                <th className="px-6 py-4">Total</th>
                 <th className="px-6 py-4">Responsable</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-low text-sm">
               {loading ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">Cargando...</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">Cargando...</td></tr>
               ) : movimientos.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">Sin movimientos registrados</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">Sin movimientos registrados</td></tr>
               ) : movimientos.map(row => (
                 <tr key={row.id} className="hover:bg-surface-container-low/50">
                   <td className="px-6 py-4">{format(new Date(row.created_at), 'dd/MM HH:mm', { locale: es })}</td>
@@ -106,6 +141,11 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-6 py-4 font-medium">{row.producto_nombre}</td>
                   <td className="px-6 py-4 font-semibold">{row.tipo === 'ENTRADA' ? '+' : '-'}{row.cantidad}</td>
+                  <td className="px-6 py-4 font-bold">
+                    {row.tipo === 'SALIDA' && row.total
+                      ? <span className="text-primary">{formatCLP(row.total)}</span>
+                      : <span className="text-zinc-300">—</span>}
+                  </td>
                   <td className="px-6 py-4">{row.usuario_email || '—'}</td>
                 </tr>
               ))}
