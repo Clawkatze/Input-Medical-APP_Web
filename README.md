@@ -1,6 +1,6 @@
 # 🏥 Input Medical - Sistema de Gestión de Inventario
 
-Sistema web para control de stock de insumos médicos con lógica FIFO, alertas de vencimiento y trazabilidad completa.
+Sistema web para control de stock de insumos médicos con lógica FIFO, alertas de vencimiento, trazabilidad completa, precios con descuento y gestión de usuarios por roles.
 
 **Stack:** React + Vite · Node.js + Express · PostgreSQL · Docker
 
@@ -11,31 +11,36 @@ Sistema web para control de stock de insumos médicos con lógica FIFO, alertas 
 ```
 inputmedical/
 ├── apps/
-│   ├── backend/                  ← API REST en Node.js + Express
+│   ├── backend/                   ← API REST en Node.js + Express
 │   │   ├── src/
-│   │   │   ├── config/db.js      ← Conexión a PostgreSQL (pg pool)
-│   │   │   ├── controllers/      ← Lógica de negocio por módulo
-│   │   │   ├── middleware/       ← Auth JWT + manejo de errores
-│   │   │   ├── routes/           ← Definición de endpoints
-│   │   │   └── server.js         ← Entrada principal
+│   │   │   ├── config/db.js       ← Conexión a PostgreSQL (pg pool)
+│   │   │   ├── controllers/       ← Lógica de negocio por módulo
+│   │   │   ├── middleware/        ← Auth JWT + control de roles
+│   │   │   ├── routes/            ← Endpoints protegidos por rol
+│   │   │   ├── scripts/init.js    ← Crea el Super Admin al arrancar
+│   │   │   └── server.js          ← Entrada principal
 │   │   ├── Dockerfile
 │   │   ├── package.json
 │   │   └── .env.example
 │   │
-│   └── frontend/                 ← App React + Vite + Tailwind
+│   └── frontend/                  ← App React + Vite + Tailwind
 │       ├── src/
-│       │   ├── context/          ← AuthContext (sesión JWT)
-│       │   ├── services/api.js   ← Cliente axios con interceptor de token
-│       │   ├── components/       ← Layout compartido (SideNav, TopNav, Footer)
-│       │   └── pages/            ← 8 páginas de la aplicación
+│       │   ├── context/           ← AuthContext con helpers de rol
+│       │   ├── services/          ← Cliente Axios + helpers de precio
+│       │   ├── components/        ← Layout con nav dinámico por rol
+│       │   └── pages/             ← 10 páginas de la aplicación
 │       ├── Dockerfile
 │       ├── package.json
 │       └── .env.example
 │
 ├── supabase/
 │   └── migrations/
-│       ├── 001_schema.sql        ← Esquema completo + funciones FIFO
-│       └── 002_seed.sql          ← Datos de demo + usuario admin
+│       ├── 001_schema.sql         ← Tablas, vistas, funciones FIFO
+│       ├── 002_seed.sql           ← Datos de demo (sin usuario hardcodeado)
+│       ├── 003_precios.sql        ← precio_unitario + descuentos en movimientos
+│       ├── 004_valor_inventario.sql ← Vista v_valor_inventario + fn_gran_total
+│       ├── 005_precio_descuento.sql ← precio_descuento por producto (V.DESC)
+│       └── 006_roles.sql          ← Sistema de 4 roles
 │
 ├── docker-compose.yml
 ├── .env.example
@@ -47,20 +52,16 @@ inputmedical/
 
 ## ✅ Requisitos previos
 
-Antes de comenzar asegúrate de tener instalado:
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — debe estar **abierto y corriendo** antes de cualquier comando Docker
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — debe estar **abierto y corriendo**
 - [Node.js 20+](https://nodejs.org/) — incluye `npm` automáticamente
 
-Para verificar:
 ```
-node --version    → debe mostrar v20.x.x o superior
-npm --version     → viene incluido con Node.js
-docker --version  → confirma que Docker está instalado
+node --version    → v20.x.x o superior
+npm --version     → incluido con Node.js
+docker --version  → confirma instalación
 ```
 
-> ⚠️ **Usuarios Windows:** los comandos de este README usan PowerShell.
-> PowerShell **no acepta** `&&` para encadenar comandos. Ejecútalos uno por uno.
+> ⚠️ **Windows:** PowerShell no acepta `&&`. Ejecuta los comandos uno por uno.
 
 ---
 
@@ -84,9 +85,7 @@ cp .env.example .env && cp apps/backend/.env.example apps/backend/.env && cp app
 
 ### Paso 2 — Instalar dependencias
 
-Instala los paquetes de Node.js en cada aplicación. Esto es necesario porque Docker monta las carpetas como volumen y necesita encontrar `node_modules` ya creado.
-
-**Windows (PowerShell) — un comando por línea:**
+**Windows (PowerShell):**
 ```powershell
 cd apps/backend
 npm install
@@ -106,26 +105,23 @@ cd apps/frontend && npm install && cd ../..
 
 ### Paso 3 — Levantar los contenedores
 
-Asegúrate de que **Docker Desktop esté abierto** antes de ejecutar esto:
-
 ```powershell
 docker compose up -d
 ```
 
-Verifica que los tres contenedores estén corriendo (todos deben mostrar `Up`, no `Restarting`):
+Verifica que los tres contenedores estén en `Up`:
 
 ```powershell
 docker ps
 ```
 
-Deberías ver:
 ```
 inputmedical_db        Up
 inputmedical_backend   Up
 inputmedical_frontend  Up
 ```
 
-> ⚠️ Si `inputmedical_backend` aparece como `Restarting`, revisa los logs:
+> ⚠️ Si `inputmedical_backend` aparece como `Restarting`:
 > ```powershell
 > docker logs inputmedical_backend
 > ```
@@ -138,56 +134,45 @@ inputmedical_frontend  Up
 
 ---
 
-### Paso 4 — Crear el usuario administrador
+### Paso 4 — Ingresar al sistema
 
-El esquema se aplica automáticamente, pero el usuario admin debe crearse una sola vez.
-
-**4a. Generar el hash de la contraseña** (desde la carpeta `apps/backend` donde están las dependencias):
-
-```powershell
-cd apps/backend
-node -e "const b = require('bcryptjs'); b.hash('admin123', 10).then(h => console.log(h))"
-cd ../..
-```
-
-Copia el hash que imprime en consola (empieza con `$2a$10$...`).
-
-**4b. Conectarse a la BD e insertar el usuario:**
-
-```powershell
-docker exec -it inputmedical_db psql -U postgres -d inputmedical
-```
-
-Dentro del prompt de psql, pega esto reemplazando `HASH_AQUI` por el valor copiado:
-
-```sql
-INSERT INTO usuarios (email, nombre, password_hash, rol)
-VALUES ('admin@inputmedical.cl', 'Administrador', 'HASH_AQUI', 'admin');
-\q
-```
-
----
-
-### Paso 5 — Ingresar al sistema
+El **Super Admin se crea automáticamente** al arrancar el backend usando las variables del `.env`. No se requiere ningún paso manual.
 
 Abre el navegador en **http://localhost:5173**
 
-- **Email:** `admin@inputmedical.cl`
-- **Contraseña:** `admin123`
+- **Email:** `admin@inputmedical.cl` _(o el que definas en `SUPERADMIN_EMAIL`)_
+- **Contraseña:** `admin123` _(o el que definas en `SUPERADMIN_PASSWORD`)_
+
+> ⚠️ Cambia la contraseña del Super Admin desde el panel de Usuarios después del primer ingreso.
 
 ---
 
-## 🔌 Opción B: Conectar tu BD PostgreSQL existente
+### Paso 5 — Crear usuarios adicionales
 
-Si ya tienes una BD de PostgreSQL creada:
+Los usuarios se crean desde la interfaz web, sin tocar SQL ni archivos:
 
-**1. Ejecutar el esquema en tu BD:**
+1. Inicia sesión como Super Admin
+2. Ve a **Usuarios** en el menú lateral
+3. Click en **Nuevo Usuario**
+4. Completa nombre, email, contraseña y rol
+
+---
+
+## 🔌 Opción B: Conectar tu BD PostgreSQL existente (Supabase u otro)
+
+**1. Ejecutar las migraciones en orden:**
 ```bash
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/001_schema.sql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/002_seed.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/003_precios.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/004_valor_inventario.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/005_precio_descuento.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/006_roles.sql
 ```
 
-**2. Editar `apps/backend/.env` con tus credenciales:**
+> En Supabase puedes pegar cada archivo en el **SQL Editor** del proyecto.
+
+**2. Editar `apps/backend/.env`:**
 ```env
 DB_HOST=TU_HOST
 DB_PORT=5432
@@ -196,9 +181,9 @@ DB_USER=TU_USUARIO
 DB_PASSWORD=TU_CONTRASEÑA
 ```
 
-**3. En `docker-compose.yml`, comentar el servicio `db`** y quitar el `depends_on` del backend:
+**3. Comentar el servicio `db` en `docker-compose.yml`:**
 ```yaml
-# db:        ← comentar todo este bloque
+# db:
 #   image: ...
 ```
 
@@ -221,34 +206,87 @@ docker compose logs -f backend
 # Reiniciar un servicio
 docker compose restart backend
 
-# Detener todo
+# Detener todo (mantiene la BD)
 docker compose down
 
-# Reset total (borra la BD local, útil para empezar desde cero)
+# Reset total — borra la BD y vuelve a aplicar todas las migraciones
 docker compose down -v
+docker compose up -d
 ```
 
 ---
 
-## 🔑 API REST - Endpoints principales
+## 👥 Roles del sistema
 
-| Método | Endpoint                           | Descripción                       |
-|--------|------------------------------------|-----------------------------------|
-| POST   | `/api/auth/login`                  | Login, retorna JWT                |
-| GET    | `/api/auth/me`                     | Datos del usuario actual          |
-| GET    | `/api/productos`                   | Listar productos (con búsqueda)   |
-| GET    | `/api/productos/barcode/:codigo`   | Buscar por barcode o SKU          |
-| POST   | `/api/productos`                   | Crear producto + lote inicial     |
-| PUT    | `/api/productos/:id`               | Editar producto                   |
-| DELETE | `/api/productos/:id`               | Desactivar producto (soft delete) |
-| POST   | `/api/movimientos/entrada`         | Registrar entrada de stock        |
-| POST   | `/api/movimientos/salida`          | Registrar salida (lógica FIFO)    |
-| GET    | `/api/movimientos`                 | Kardex (filtrable por producto)   |
-| GET    | `/api/movimientos/alertas`         | Stock crítico y vencimientos      |
-| GET    | `/api/movimientos/dashboard-stats` | KPIs para el dashboard            |
-| GET    | `/api/reportes/stock`              | CSV con stock actual              |
-| GET    | `/api/reportes/vencimientos`       | CSV de productos por vencer       |
-| GET    | `/api/reportes/movimientos`        | CSV Kardex completo               |
+| Módulo              | Super Admin | Admin | Bodeguero | Visualizador |
+|---------------------|:-----------:|:-----:|:---------:|:------------:|
+| Dashboard           | ✅ | ✅ | ✅ | ✅ |
+| Ver Productos       | ✅ | ✅ | ✅ | ✅ |
+| Crear/Editar Productos | ✅ | ✅ | ❌ | ❌ |
+| Registrar Entrada   | ✅ | ✅ | ✅ | ❌ |
+| Registrar Salida    | ✅ | ✅ | ✅ | ❌ |
+| Alertas             | ✅ | ✅ | ✅ | ✅ |
+| Reportes CSV        | ✅ | ✅ | ❌ | ✅ |
+| Gestión de Usuarios | ✅ | ❌ | ❌ | ❌ |
+| Precios y Descuentos| ✅ | ✅ | ❌ | ❌ |
+
+---
+
+## 🔑 API REST — Endpoints
+
+### Autenticación
+| Método | Endpoint         | Descripción              |
+|--------|------------------|--------------------------|
+| POST   | `/api/auth/login`| Login, retorna JWT       |
+| GET    | `/api/auth/me`   | Datos del usuario actual |
+
+### Usuarios _(Solo Super Admin)_
+| Método | Endpoint                     | Descripción               |
+|--------|------------------------------|---------------------------|
+| GET    | `/api/usuarios`              | Listar usuarios           |
+| POST   | `/api/usuarios`              | Crear usuario             |
+| PUT    | `/api/usuarios/:id`          | Editar usuario            |
+| PUT    | `/api/usuarios/:id/password` | Cambiar contraseña        |
+| DELETE | `/api/usuarios/:id`          | Desactivar usuario        |
+
+### Productos
+| Método | Endpoint                         | Roles            |
+|--------|----------------------------------|------------------|
+| GET    | `/api/productos`                 | Todos            |
+| GET    | `/api/productos/barcode/:codigo` | Todos            |
+| POST   | `/api/productos`                 | SuperAdmin/Admin |
+| PUT    | `/api/productos/:id`             | SuperAdmin/Admin |
+| DELETE | `/api/productos/:id`             | SuperAdmin/Admin |
+
+### Movimientos
+| Método | Endpoint                            | Roles                       |
+|--------|-------------------------------------|-----------------------------|
+| GET    | `/api/movimientos`                  | Todos                       |
+| GET    | `/api/movimientos/alertas`          | Todos                       |
+| GET    | `/api/movimientos/dashboard-stats`  | Todos                       |
+| GET    | `/api/movimientos/valor-inventario` | Todos                       |
+| POST   | `/api/movimientos/entrada`          | SuperAdmin/Admin/Bodeguero  |
+| POST   | `/api/movimientos/salida`           | SuperAdmin/Admin/Bodeguero  |
+
+### Reportes _(SuperAdmin, Admin y Visualizador)_
+| Método | Endpoint                    | Descripción                     |
+|--------|-----------------------------|---------------------------------|
+| GET    | `/api/reportes/stock`       | CSV stock actual + valor total  |
+| GET    | `/api/reportes/vencimientos`| CSV productos por vencer        |
+| GET    | `/api/reportes/movimientos` | CSV Kardex completo             |
+
+---
+
+## 💰 Sistema de Precios
+
+Cada producto tiene dos campos de precio:
+
+- **Precio Normal** (`precio_unitario`) — precio de venta regular
+- **V.DESC** (`precio_descuento`) — precio rebajado opcional
+
+El sistema usa automáticamente `precio_descuento` si existe, sino `precio_unitario`. Al registrar una salida el precio vigente se captura en el movimiento para trazabilidad histórica.
+
+El **Valor Total del Inventario** se calcula como `stock_actual × precio_vigente` por producto, sumado en el dashboard y en la tabla de productos.
 
 ---
 
@@ -256,8 +294,8 @@ docker compose down -v
 
 La función `fn_registrar_salida` en PostgreSQL:
 1. Verifica que haya stock suficiente
-2. Obtiene los lotes del producto ordenados por `fecha_vencimiento ASC` (el que vence antes, primero)
+2. Ordena los lotes por `fecha_vencimiento ASC` (el que vence antes, primero)
 3. Descuenta del primer lote disponible
 4. Si la cantidad supera ese lote, continúa con el siguiente
-5. Registra un movimiento por cada lote consumido
+5. Registra el precio vigente del producto en cada movimiento
 6. Actualiza el `stock_actual` del producto

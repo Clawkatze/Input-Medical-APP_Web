@@ -2,20 +2,24 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
-const NAV_ITEMS = [
-  { path: '/',               label: 'Dashboard',          icon: 'dashboard' },
-  { path: '/products',       label: 'Productos',          icon: 'inventory_2' },
-  { path: '/add-product',    label: 'Nuevo Producto',     icon: 'add_box' },
-  { path: '/register-entry', label: 'Registrar Entrada',  icon: 'move_to_inbox' },
-  { path: '/register-sale',  label: 'Registrar Salida',   icon: 'point_of_sale' },
-  { path: '/reports',        label: 'Reportes',           icon: 'analytics' },
-  { path: '/alerts',         label: 'Alertas',            icon: 'notifications' },
-]
+const ROL_LABEL = {
+  superadmin:   'Super Admin',
+  admin:        'Administrador',
+  bodeguero:    'Bodeguero',
+  visualizador: 'Visualizador',
+}
+
+const ROL_COLOR = {
+  superadmin:   'text-primary',
+  admin:        'text-secondary',
+  bodeguero:    'text-tertiary',
+  visualizador: 'text-on-surface-variant',
+}
 
 export function SideNavBar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, signOut, isSuperAdmin, isAdmin, isBodeguero, canViewReports } = useAuth()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -25,6 +29,18 @@ export function SideNavBar() {
     toast.success('Sesión cerrada')
     navigate('/login')
   }
+
+  // Nav items filtrados por rol
+  const NAV_ITEMS = [
+    { path: '/',               label: 'Dashboard',         icon: 'dashboard',     show: true },
+    { path: '/products',       label: 'Productos',         icon: 'inventory_2',   show: true },
+    { path: '/add-product',    label: 'Nuevo Producto',    icon: 'add_box',       show: isAdmin },
+    { path: '/register-entry', label: 'Registrar Entrada', icon: 'move_to_inbox', show: isBodeguero },
+    { path: '/register-sale',  label: 'Registrar Salida',  icon: 'point_of_sale', show: isBodeguero },
+    { path: '/reports',        label: 'Reportes',          icon: 'analytics',     show: canViewReports },
+    { path: '/alerts',         label: 'Alertas',           icon: 'notifications', show: true },
+    { path: '/usuarios',       label: 'Usuarios',          icon: 'manage_accounts', show: isSuperAdmin },
+  ].filter(item => item.show)
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 z-50 flex flex-col py-8 px-4 bg-zinc-100 border-r border-zinc-200">
@@ -37,15 +53,12 @@ export function SideNavBar() {
 
       <nav className="flex-1 space-y-1">
         {NAV_ITEMS.map(({ path, label, icon }) => (
-          <Link
-            key={path}
-            to={path}
+          <Link key={path} to={path}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
               isActive(path)
                 ? 'bg-white text-primary font-bold shadow-sm translate-x-1'
                 : 'text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
+            }`}>
             <span className="material-symbols-outlined text-[20px]">{icon}</span>
             <span className="font-medium text-sm">{label}</span>
           </Link>
@@ -54,15 +67,14 @@ export function SideNavBar() {
 
       <div className="mt-auto pt-4 border-t border-zinc-200">
         <div className="px-4 py-3">
-          <p className="text-xs font-bold text-on-surface truncate">{user?.email}</p>
-          <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold mt-0.5">
-            {user?.rol || 'Administrador'}
+          <p className="text-xs font-bold text-on-surface truncate">{user?.nombre || user?.email}</p>
+          <p className="text-xs truncate text-on-surface-variant">{user?.email}</p>
+          <p className={`text-[10px] uppercase tracking-wider font-black mt-1 ${ROL_COLOR[user?.rol]}`}>
+            {ROL_LABEL[user?.rol] || user?.rol}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-error hover:bg-error/5 rounded-lg transition-colors"
-        >
+        <button onClick={handleLogout}
+          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-error hover:bg-error/5 rounded-lg transition-colors">
           <span className="material-symbols-outlined text-[18px]">logout</span>
           Cerrar sesión
         </button>
@@ -84,9 +96,7 @@ export function PageLayout({ title, children }) {
     <div className="bg-surface min-h-screen">
       <SideNavBar />
       <TopNavBar title={title} />
-      <main className="ml-64 pt-16 p-8">
-        {children}
-      </main>
+      <main className="ml-64 pt-16 p-8">{children}</main>
       <Footer />
     </div>
   )

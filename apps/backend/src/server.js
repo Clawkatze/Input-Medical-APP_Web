@@ -1,7 +1,8 @@
 require('dotenv').config()
-const express      = require('express')
-const cors         = require('cors')
-const errorHandler = require('./middleware/errorHandler')
+const express             = require('express')
+const cors                = require('cors')
+const errorHandler        = require('./middleware/errorHandler')
+const inicializarSuperAdmin = require('./scripts/init')
 
 const app = express()
 
@@ -14,6 +15,7 @@ app.use(express.json())
 
 // ─── Rutas ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',        require('./routes/auth'))
+app.use('/api/usuarios',    require('./routes/usuarios'))
 app.use('/api/productos',   require('./routes/productos'))
 app.use('/api/movimientos', require('./routes/movimientos'))
 app.use('/api/reportes',    require('./routes/reportes'))
@@ -29,7 +31,9 @@ app.use(errorHandler)
 
 // ─── Iniciar servidor ─────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Backend corriendo en http://localhost:${PORT}`)
   console.log(`   Entorno: ${process.env.NODE_ENV || 'development'}`)
+  // Crear superadmin si no existe
+  await inicializarSuperAdmin()
 })

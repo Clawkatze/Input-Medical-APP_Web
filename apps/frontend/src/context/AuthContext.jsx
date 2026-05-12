@@ -10,7 +10,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar que el token almacenado sigue siendo válido
     const token = localStorage.getItem('token')
     if (token) {
       api.get('/api/auth/me')
@@ -40,8 +39,19 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Helpers de rol
+  const isSuperAdmin  = user?.rol === 'superadmin'
+  const isAdmin       = user?.rol === 'admin' || isSuperAdmin
+  const isBodeguero   = user?.rol === 'bodeguero' || isAdmin
+  const canViewPrices = user?.rol !== 'bodeguero'
+  const canViewReports = user?.rol === 'superadmin' || user?.rol === 'admin' || user?.rol === 'visualizador'
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{
+      user, loading, signIn, signOut,
+      isSuperAdmin, isAdmin, isBodeguero,
+      canViewPrices, canViewReports,
+    }}>
       {children}
     </AuthContext.Provider>
   )
