@@ -27,6 +27,7 @@ services:
       - ./supabase/migrations/003_precios.sql:/docker-entrypoint-initdb.d/03_precios.sql:ro
       - ./supabase/migrations/004_valor_inventario.sql:/docker-entrypoint-initdb.d/04_valor_inventario.sql:ro
       - ./supabase/migrations/005_precio_descuento.sql:/docker-entrypoint-initdb.d/05_precio_descuento.sql:ro
+      - ./supabase/migrations/006_roles.sql:/docker-entrypoint-initdb.d/06_roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s

@@ -1,14 +1,9 @@
 -- =============================================================================
 -- Input Medical - Datos de demostración
 -- Migration 002: Seed de productos y lotes de ejemplo
+-- NOTA: El usuario Super Admin se crea automáticamente al arrancar el backend
+-- usando las variables SUPERADMIN_EMAIL y SUPERADMIN_PASSWORD del .env
 -- =============================================================================
-
--- ─── Usuario administrador por defecto ───────────────────────────────────────
--- Contraseña: admin123 (hash bcrypt generado con bcryptjs rounds=10)
--- Para regenerar: node -e "const b=require('bcryptjs'); b.hash('admin123',10).then(console.log)"
-INSERT INTO usuarios (email, nombre, password_hash, rol) VALUES
-  ('admin@inputmedical.cl', 'Administrador', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
-ON CONFLICT (email) DO NOTHING;
 
 -- ─── Categorías ───────────────────────────────────────────────────────────────
 INSERT INTO categorias (nombre, descripcion) VALUES
