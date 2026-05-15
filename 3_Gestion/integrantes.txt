@@ -1,0 +1,7 @@
+Integrantes del Equipo — Sistema de Gestión de Inventario Input Medical
+Asignatura: Taller de Programación — Duoc UC
+Docente: Cristian Moreno Sanhueza
+
+1. Francisco Olate
+2. Annais Leon
+3. Juan Valenzuela
