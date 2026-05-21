@@ -17,19 +17,15 @@ async function registrarEntrada(req, res, next) {
 }
 
 // POST /api/movimientos/salida
-// El precio se toma automáticamente del producto (precio_descuento si existe, sino precio_unitario)
 async function registrarSalida(req, res, next) {
   const { producto_id, cantidad, motivo, observacion } = req.body
-
   if (!producto_id || !cantidad) {
     return res.status(400).json({ error: 'producto_id y cantidad son requeridos' })
   }
   try {
-    // Pasar precio NULL para que la función SQL use el precio vigente del producto
     const { rows } = await pool.query(
       `SELECT fn_registrar_salida($1,$2,$3,$4,$5,NULL,0,0) AS movimiento_id`,
-      [producto_id, Number(cantidad), motivo || 'VENTA',
-       observacion || null, req.user.email]
+      [producto_id, Number(cantidad), motivo || 'VENTA', observacion || null, req.user.email]
     )
     res.status(201).json({ message: 'Salida registrada correctamente (FIFO)', movimientos: rows })
   } catch (err) {
@@ -38,6 +34,40 @@ async function registrarSalida(req, res, next) {
     }
     next(err)
   }
+}
+
+// POST /api/movimientos/merma
+async function registrarMerma(req, res, next) {
+  const { producto_id, lote_id, cantidad, observacion } = req.body
+  if (!producto_id || !lote_id || !cantidad) {
+    return res.status(400).json({ error: 'producto_id, lote_id y cantidad son requeridos' })
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT fn_registrar_merma($1,$2,$3,$4,$5) AS movimiento_id`,
+      [producto_id, lote_id, Number(cantidad), observacion || null, req.user.email]
+    )
+    res.status(201).json({ movimiento_id: rows[0].movimiento_id, message: 'Merma registrada correctamente' })
+  } catch (err) {
+    if (err.message.includes('insuficiente') || err.message.includes('no encontrado')) {
+      return res.status(400).json({ error: err.message })
+    }
+    next(err)
+  }
+}
+
+// GET /api/movimientos/lotes/:producto_id
+async function getLotesPorProducto(req, res, next) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, numero_lote, fecha_vencimiento, cantidad_actual, created_at
+       FROM lotes
+       WHERE producto_id = $1 AND cantidad_actual > 0
+       ORDER BY fecha_vencimiento ASC NULLS LAST, created_at ASC`,
+      [req.params.producto_id]
+    )
+    res.json(rows)
+  } catch (err) { next(err) }
 }
 
 // GET /api/movimientos
@@ -61,23 +91,53 @@ async function getMovimientos(req, res, next) {
 async function getAlertas(req, res, next) {
   try {
     const { rows } = await pool.query(`
-      SELECT * FROM v_alertas
-      WHERE alerta_stock = true OR estado_vencimiento IN ('VENCIDO','PROXIMO')
-      ORDER BY estado_vencimiento ASC, stock_actual ASC
+      SELECT
+        v.*,
+        l.id             AS lote_id,
+        l.numero_lote,
+        l.cantidad_actual AS lote_cantidad
+      FROM v_alertas v
+      LEFT JOIN lotes l ON l.producto_id = v.id
+        AND l.fecha_vencimiento = v.proximo_vencimiento
+        AND l.cantidad_actual > 0
+      WHERE v.alerta_stock = true OR v.estado_vencimiento IN ('VENCIDO','PROXIMO')
+      ORDER BY v.estado_vencimiento ASC, v.stock_actual ASC
     `)
     res.json(rows)
   } catch (err) { next(err) }
 }
 
 // GET /api/movimientos/dashboard-stats
+// Incluye ventas, pérdidas por merma y descuentos aplicados del día
 async function getDashboardStats(req, res, next) {
   try {
-    const [total, critico, alertasVenc, movHoy, ventasHoy, valorInventario] = await Promise.all([
+    const [total, critico, alertasVenc, movHoy, ventasHoy, mermasHoy, descuentosHoy, valorInventario] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM productos WHERE activo = true`),
       pool.query(`SELECT COUNT(*) FROM productos WHERE activo = true AND stock_actual <= stock_minimo`),
       pool.query(`SELECT COUNT(*) FROM v_alertas WHERE estado_vencimiento IN ('VENCIDO','PROXIMO')`),
       pool.query(`SELECT COUNT(*) FROM movimientos WHERE created_at >= CURRENT_DATE`),
-      pool.query(`SELECT COALESCE(SUM(total),0) AS total_ventas FROM movimientos WHERE tipo='SALIDA' AND created_at >= CURRENT_DATE`),
+      // Ventas del día: salidas con motivo VENTA, TRASLADO o AJUSTE
+      pool.query(`
+        SELECT COALESCE(SUM(total),0) AS total_ventas
+        FROM movimientos
+        WHERE tipo='SALIDA' AND motivo IN ('VENTA','TRASLADO','AJUSTE')
+        AND created_at >= CURRENT_DATE
+      `),
+      // Pérdidas del día: solo mermas
+      pool.query(`
+        SELECT COALESCE(SUM(total),0) AS total_mermas
+        FROM movimientos
+        WHERE tipo='SALIDA' AND motivo='MERMA'
+        AND created_at >= CURRENT_DATE
+      `),
+      // Descuentos aplicados hoy: diferencia entre precio normal y precio vigente en ventas
+      pool.query(`
+        SELECT COALESCE(SUM(descuento_monto),0) AS total_descuentos
+        FROM movimientos
+        WHERE tipo='SALIDA' AND motivo='VENTA'
+        AND descuento_monto > 0
+        AND created_at >= CURRENT_DATE
+      `),
       pool.query(`SELECT fn_gran_total_inventario() AS gran_total`),
     ])
     res.json({
@@ -86,6 +146,8 @@ async function getDashboardStats(req, res, next) {
       proximos_vencer:        Number(alertasVenc.rows[0].count),
       movimientos_hoy:        Number(movHoy.rows[0].count),
       ventas_hoy:             Number(ventasHoy.rows[0].total_ventas),
+      mermas_hoy:             Number(mermasHoy.rows[0].total_mermas),
+      descuentos_hoy:         Number(descuentosHoy.rows[0].total_descuentos),
       valor_total_inventario: Number(valorInventario.rows[0].gran_total),
     })
   } catch (err) { next(err) }
@@ -101,6 +163,7 @@ async function getValorInventario(req, res, next) {
 }
 
 module.exports = {
-  registrarEntrada, registrarSalida, getMovimientos,
-  getAlertas, getDashboardStats, getValorInventario
+  registrarEntrada, registrarSalida, registrarMerma,
+  getLotesPorProducto, getMovimientos, getAlertas,
+  getDashboardStats, getValorInventario
 }
