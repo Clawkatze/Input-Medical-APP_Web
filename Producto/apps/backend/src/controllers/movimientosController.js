@@ -37,7 +37,6 @@ async function registrarSalida(req, res, next) {
 }
 
 // POST /api/movimientos/merma
-// Descuenta de un lote específico elegido manualmente
 async function registrarMerma(req, res, next) {
   const { producto_id, lote_id, cantidad, observacion } = req.body
   if (!producto_id || !lote_id || !cantidad) {
@@ -58,7 +57,6 @@ async function registrarMerma(req, res, next) {
 }
 
 // GET /api/movimientos/lotes/:producto_id
-// Retorna los lotes activos de un producto para selección manual en merma
 async function getLotesPorProducto(req, res, next) {
   try {
     const { rows } = await pool.query(
@@ -92,11 +90,10 @@ async function getMovimientos(req, res, next) {
 // GET /api/movimientos/alertas
 async function getAlertas(req, res, next) {
   try {
-    // Incluir el lote próximo a vencer para cada producto
     const { rows } = await pool.query(`
       SELECT
         v.*,
-        l.id        AS lote_id,
+        l.id             AS lote_id,
         l.numero_lote,
         l.cantidad_actual AS lote_cantidad
       FROM v_alertas v
@@ -111,14 +108,36 @@ async function getAlertas(req, res, next) {
 }
 
 // GET /api/movimientos/dashboard-stats
+// Incluye ventas, pérdidas por merma y descuentos aplicados del día
 async function getDashboardStats(req, res, next) {
   try {
-    const [total, critico, alertasVenc, movHoy, ventasHoy, valorInventario] = await Promise.all([
+    const [total, critico, alertasVenc, movHoy, ventasHoy, mermasHoy, descuentosHoy, valorInventario] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM productos WHERE activo = true`),
       pool.query(`SELECT COUNT(*) FROM productos WHERE activo = true AND stock_actual <= stock_minimo`),
       pool.query(`SELECT COUNT(*) FROM v_alertas WHERE estado_vencimiento IN ('VENCIDO','PROXIMO')`),
       pool.query(`SELECT COUNT(*) FROM movimientos WHERE created_at >= CURRENT_DATE`),
-      pool.query(`SELECT COALESCE(SUM(total),0) AS total_ventas FROM movimientos WHERE tipo='SALIDA' AND created_at >= CURRENT_DATE`),
+      // Ventas del día: salidas con motivo VENTA, TRASLADO o AJUSTE
+      pool.query(`
+        SELECT COALESCE(SUM(total),0) AS total_ventas
+        FROM movimientos
+        WHERE tipo='SALIDA' AND motivo IN ('VENTA','TRASLADO','AJUSTE')
+        AND created_at >= CURRENT_DATE
+      `),
+      // Pérdidas del día: solo mermas
+      pool.query(`
+        SELECT COALESCE(SUM(total),0) AS total_mermas
+        FROM movimientos
+        WHERE tipo='SALIDA' AND motivo='MERMA'
+        AND created_at >= CURRENT_DATE
+      `),
+      // Descuentos aplicados hoy: diferencia entre precio normal y precio vigente en ventas
+      pool.query(`
+        SELECT COALESCE(SUM(descuento_monto),0) AS total_descuentos
+        FROM movimientos
+        WHERE tipo='SALIDA' AND motivo='VENTA'
+        AND descuento_monto > 0
+        AND created_at >= CURRENT_DATE
+      `),
       pool.query(`SELECT fn_gran_total_inventario() AS gran_total`),
     ])
     res.json({
@@ -127,6 +146,8 @@ async function getDashboardStats(req, res, next) {
       proximos_vencer:        Number(alertasVenc.rows[0].count),
       movimientos_hoy:        Number(movHoy.rows[0].count),
       ventas_hoy:             Number(ventasHoy.rows[0].total_ventas),
+      mermas_hoy:             Number(mermasHoy.rows[0].total_mermas),
+      descuentos_hoy:         Number(descuentosHoy.rows[0].total_descuentos),
       valor_total_inventario: Number(valorInventario.rows[0].gran_total),
     })
   } catch (err) { next(err) }
