@@ -3,238 +3,613 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Wireframe — Sistema de Gestión de Inventario Input Medical</title>
+<title>Wireframe — Input Medical Inventory System</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; padding: 24px; color: #1a1a1a; }
-h1 { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
-.meta { font-size: 12px; color: #888; margin-bottom: 28px; }
-.screen-label { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
-.screen { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
-.topbar { background: #f5f5f0; border-bottom: 0.5px solid #e0e0dc; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
-.topbar-title { font-size: 13px; font-weight: 500; }
-.topbar-role { font-size: 11px; color: #888; margin-left: auto; }
-.layout { display: flex; min-height: 280px; }
-.sidebar { width: 140px; border-right: 0.5px solid #eee; padding: 12px 0; flex-shrink: 0; background: #fafaf8; }
-.nav-item { padding: 7px 14px; font-size: 12px; color: #888; display: flex; align-items: center; gap: 7px; }
-.nav-item.active { color: #185FA5; background: #EAF3FB; }
-.content { flex: 1; padding: 14px; }
-.section-title { font-size: 12px; font-weight: 500; margin-bottom: 10px; }
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
-.kpi { background: #f5f5f0; border-radius: 8px; padding: 10px; }
-.kpi-label { font-size: 10px; color: #888; margin-bottom: 4px; }
-.kpi-val { font-size: 18px; font-weight: 500; }
-.kpi-val.warn { color: #854F0B; }
-.kpi-val.danger { color: #A32D2D; }
-.table-wrap { border: 0.5px solid #e0e0dc; border-radius: 8px; overflow: hidden; }
-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
-thead { background: #f5f5f0; }
-th { padding: 6px 8px; text-align: left; color: #888; font-weight: 500; border-bottom: 0.5px solid #e0e0dc; }
-td { padding: 6px 8px; border-bottom: 0.5px solid #eee; }
-tr:last-child td { border-bottom: none; }
-.badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 99px; }
-.badge-ok { background: #EAF3DE; color: #27500A; }
-.badge-warn { background: #FAEEDA; color: #633806; }
-.badge-danger { background: #FCEBEB; color: #791F1F; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-label { font-size: 11px; color: #888; }
-.form-input { height: 30px; border: 0.5px solid #ccc; border-radius: 8px; padding: 0 8px; font-size: 12px; display: flex; align-items: center; }
-.form-input.mono { font-family: monospace; background: #f5f5f0; }
-.btn { height: 30px; padding: 0 14px; border-radius: 8px; font-size: 12px; font-weight: 500; border: 0.5px solid #ccc; background: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
-.btn-primary { background: #1a1a1a; color: #fff; border-color: transparent; }
-.divider { height: 0.5px; background: #eee; margin: 12px 0; }
-.login-wrap { display: flex; align-items: center; justify-content: center; padding: 40px 14px; background: #f5f5f0; }
-.login-card { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 28px 24px; width: 280px; }
-.alert-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 11px; }
-.alert-warn { background: #FAEEDA; color: #633806; }
-.alert-danger { background: #FCEBEB; color: #791F1F; }
-.total-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding-top: 8px; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --surface: #fbf9f8;
+    --surface-low: #f6f3f2;
+    --surface-white: #ffffff;
+    --primary: #0058bf;
+    --primary-dark: #003d8a;
+    --on-primary: #ffffff;
+    --text-main: #1a1e2e;
+    --text-secondary: #414754;
+    --text-muted: #6b7280;
+    --danger: #ba1a1a;
+    --danger-bg: #fff0f0;
+    --warn-bg: #fff8ed;
+    --warn: #9a5c00;
+    --success: #1a6b3a;
+    --success-bg: #ecfdf5;
+    --info: #0058bf;
+    --info-bg: #eff6ff;
+    --border-ghost: rgba(193,198,215,0.3);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #e8e5e3; padding: 32px 20px; color: var(--text-main); font-size: 14px; line-height: 1.5; }
+  h1.doc-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: var(--text-main); }
+  p.doc-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 32px; }
+  .screen-section { margin-bottom: 40px; }
+  .screen-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .screen-label::after { content: ''; flex: 1; height: 1px; background: var(--border-ghost); }
+  .screen { background: var(--surface-white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 4px 40px rgba(0,88,191,0.06); }
+
+  /* ── LAYOUT ── */
+  .app-layout { display: flex; min-height: 480px; background: var(--surface); }
+  .sidebar { width: 200px; background: var(--surface-low); flex-shrink: 0; display: flex; flex-direction: column; padding: 0; }
+  .sidebar-brand { padding: 18px 16px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-ghost); }
+  .brand-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), #006fee); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .brand-icon svg { width: 16px; height: 16px; fill: white; }
+  .brand-text { font-size: 13px; font-weight: 700; color: var(--primary); line-height: 1.1; }
+  .brand-sub { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .sidebar-nav { padding: 12px 8px; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); margin-bottom: 2px; cursor: default; }
+  .nav-item.active { background: var(--surface-white); color: var(--primary); font-weight: 600; box-shadow: 0 1px 8px rgba(0,88,191,0.08); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border-ghost); }
+  .user-chip { display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#4f8ef7,#0058bf); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; flex-shrink: 0; }
+  .user-info { font-size: 11px; }
+  .user-name { font-weight: 600; color: var(--text-main); }
+  .user-role { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { background: rgba(251,249,248,0.85); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-ghost); padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+  .topbar-title { font-size: 15px; font-weight: 600; color: var(--text-main); }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); }
+  .scanner-badge { display: flex; align-items: center; gap: 5px; background: var(--success-bg); color: var(--success); font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 99px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .content { flex: 1; padding: 20px; overflow: auto; }
+
+  /* ── COMPONENTS ── */
+  .alert-banner { background: var(--warn-bg); border-left: 3px solid #f59e0b; border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--warn); }
+  .alert-banner strong { font-weight: 600; }
+  .alert-banner a { margin-left: auto; font-size: 12px; color: var(--primary); font-weight: 500; text-decoration: none; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface-white); border-radius: var(--radius-md); padding: 14px 16px; }
+  .kpi-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .kpi-value.blue { color: var(--primary); }
+  .kpi-value.red { color: var(--danger); }
+  .kpi-value.amber { color: var(--warn); }
+  .kpi-value.green { color: var(--success); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title-lg { font-size: 16px; font-weight: 700; }
+  .btn-ghost { font-size: 12px; color: var(--primary); font-weight: 500; background: none; border: 1px solid var(--border-ghost); padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer; }
+  .btn-primary { font-size: 13px; font-weight: 600; color: var(--on-primary); background: linear-gradient(135deg, var(--primary), #006fee); border: none; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+  .btn-outline { font-size: 12px; font-weight: 500; color: var(--primary); background: none; border: 1.5px solid var(--primary); padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; }
+  .btn-danger { font-size: 12px; font-weight: 600; color: white; background: var(--danger); border: none; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; background: var(--surface); }
+  .data-table td { padding: 12px 12px; color: var(--text-main); border-top: 1px solid var(--border-ghost); }
+  .data-table tr:first-child td { border-top: none; }
+  .badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-red { background: var(--danger-bg); color: var(--danger); }
+  .badge-amber { background: var(--warn-bg); color: var(--warn); }
+  .badge-blue { background: var(--info-bg); color: var(--info); }
+  .badge-gray { background: var(--surface-low); color: var(--text-secondary); }
+  .tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--info-bg); color: var(--primary); }
+  .amount-pos { color: var(--success); font-weight: 600; }
+  .amount-neg { color: var(--danger); font-weight: 600; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .status-ok { background: #22c55e; }
+  .status-warn { background: #f59e0b; }
+  .status-danger { background: #ef4444; }
+  .pagination { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; font-size: 12px; color: var(--text-muted); }
+  .page-btns { display: flex; gap: 4px; }
+  .page-btn { width: 28px; height: 28px; border-radius: var(--radius-sm); border: 1px solid var(--border-ghost); background: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface-low); border-radius: var(--radius-sm); padding: 7px 12px; font-size: 13px; color: var(--text-muted); flex: 1; max-width: 400px; }
+  .filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-chip { font-size: 12px; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border-ghost); background: var(--surface-white); color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+  .divider { height: 1px; background: var(--border-ghost); margin: 16px 0; }
+  .form-section-title { font-size: 13px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-grid-1 { grid-template-columns: 1fr; }
+  .form-group label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 5px; }
+  .form-input { width: 100%; height: 38px; background: var(--surface-low); border: 1.5px solid transparent; border-radius: var(--radius-sm); padding: 0 12px; font-size: 13px; color: var(--text-main); display: flex; align-items: center; }
+  .form-input.mono { font-family: monospace; font-size: 12px; letter-spacing: .05em; border-color: var(--primary); background: var(--info-bg); color: var(--primary); }
+  .form-input.placeholder { color: var(--text-muted); }
+  .form-input.focused { border-color: var(--primary); background: var(--info-bg); }
+  .form-textarea { width: 100%; height: 72px; background: var(--surface-low); border: 1.5px solid transparent; border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; color: var(--text-muted); resize: none; display: flex; align-items: flex-start; }
+  .form-select { width: 100%; height: 38px; background: var(--surface-low); border: 1.5px solid transparent; border-radius: var(--radius-sm); padding: 0 12px; font-size: 13px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
+  .scan-zone { background: var(--surface); border-radius: var(--radius-md); padding: 20px; text-align: center; margin-bottom: 20px; }
+  .scan-icon { width: 48px; height: 48px; background: var(--info-bg); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .scan-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .scan-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .impact-panel { background: #1a1e2e; color: white; border-radius: var(--radius-md); padding: 16px; }
+  .impact-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #8892a4; margin-bottom: 2px; }
+  .impact-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 12px; }
+  .impact-value.pos { color: #4ade80; }
+  .impact-value.neg { color: #f87171; }
+  .impact-value.neutral { color: #60a5fa; }
+  .lotes-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  .lotes-table th { padding: 6px 8px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); background: var(--surface-low); }
+  .lotes-table td { padding: 8px 8px; border-top: 1px solid var(--border-ghost); }
+  .lotes-table tr.selected td { background: var(--info-bg); color: var(--primary); font-weight: 500; }
+  .motivo-btns { display: flex; gap: 6px; }
+  .motivo-btn { padding: 6px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border-ghost); background: none; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-secondary); }
+  .motivo-btn.active { border-color: var(--primary); background: var(--info-bg); color: var(--primary); }
+  .alert-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--surface-white); border-radius: var(--radius-md); margin-bottom: 8px; border-left: 3px solid transparent; }
+  .alert-card.critical { border-color: var(--danger); }
+  .alert-card.warning { border-color: #f59e0b; }
+  .alert-card.info { border-color: var(--primary); }
+  .alert-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .alert-icon.red { background: var(--danger-bg); }
+  .alert-icon.amber { background: var(--warn-bg); }
+  .alert-icon.blue { background: var(--info-bg); }
+  .alert-body { flex: 1; }
+  .alert-sku { font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; }
+  .alert-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .alert-product { font-size: 12px; color: var(--text-muted); }
+  .alert-meta { font-size: 12px; }
+  .alert-meta strong { font-weight: 700; }
+  .report-card { background: var(--surface-white); border-radius: var(--radius-md); padding: 16px; }
+  .report-tag { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
+  .report-tag.green { background: var(--success-bg); color: var(--success); }
+  .report-tag.red { background: var(--danger-bg); color: var(--danger); }
+  .report-tag.blue { background: var(--info-bg); color: var(--info); }
+  .report-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .report-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .report-wide { grid-template-columns: 1fr; }
+  .sku-link { font-size: 11px; font-weight: 600; color: var(--primary); }
+  .product-sub { font-size: 11px; color: var(--text-muted); }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border-ghost); margin-bottom: 16px; }
+  .tab { padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  /* ── LOGIN ── */
+  .login-page { background: linear-gradient(160deg, #f0f4ff 0%, #fbf9f8 60%); padding: 48px 20px; display: flex; flex-direction: column; align-items: center; }
+  .login-logo { width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), #006fee); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .login-logo svg { width: 28px; height: 28px; fill: white; }
+  .login-brand { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .login-tagline { font-size: 11px; color: var(--text-muted); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 28px; }
+  .login-card { background: var(--surface-white); border-radius: var(--radius-lg); padding: 28px 28px; width: 340px; box-shadow: 0 4px 40px rgba(0,88,191,0.08); }
+  .login-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .login-card p { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+  .login-bottom { margin-top: 12px; text-align: center; font-size: 11px; color: var(--text-muted); }
+  .server-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; border: 1px solid #f59e0b; color: var(--warn); margin-top: 8px; }
+  .row-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .footer { background: var(--surface-low); border-top: 1px solid var(--border-ghost); padding: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 20px; font-size: 11px; }
+  .footer-brand { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .footer-desc { color: var(--text-muted); font-size: 11px; }
+  .footer-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 6px; }
+  .footer-link { color: var(--text-muted); margin-bottom: 3px; }
+  .footer-copy { font-size: 10px; color: var(--text-muted); text-align: right; }
 </style>
-</head>
-<body>
-<h1>Wireframe — Sistema de Gestión de Inventario</h1>
-<p class="meta">Input Medical · Taller de Programación · Duoc UC · Mayo 2026</p>
 
-<p class="screen-label">1 — Login</p>
-<div class="screen">
-  <div class="login-wrap">
-    <div class="login-card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-        <div style="width:24px;height:24px;background:#185FA5;border-radius:6px"></div>
-        <span style="font-size:14px;font-weight:500">Input Medical</span>
-      </div>
-      <p style="font-size:15px;font-weight:500;margin-bottom:4px">Iniciar sesión</p>
-      <p style="font-size:12px;color:#888;margin-bottom:20px">Sistema de gestión de inventario</p>
-      <div class="form-group" style="margin-bottom:10px">
-        <span class="form-label">Correo electrónico</span>
-        <div class="form-input" style="color:#bbb">admin@inputmedical.cl</div>
-      </div>
-      <div class="form-group" style="margin-bottom:16px">
-        <span class="form-label">Contraseña</span>
-        <div class="form-input" style="color:#bbb">••••••••</div>
-      </div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center">Ingresar</button>
-    </div>
-  </div>
-</div>
+<!-- ══════════ LOGIN ══════════ -->
+<h1 class="doc-title">Wireframe — Input Medical Inventory System</h1>
+<p class="doc-meta">Taller de Programación · Duoc UC · Mayo 2026 · Francisco Olate, Annais Leon, Juan Valenzuela</p>
 
-<p class="screen-label">2 — Dashboard</p>
-<div class="screen">
-  <div class="topbar">
-    <div style="width:18px;height:18px;background:#185FA5;border-radius:4px"></div>
-    <span class="topbar-title">Input Medical</span>
-    <span class="topbar-role">Super Admin</span>
-  </div>
-  <div class="layout">
-    <div class="sidebar">
-      <div class="nav-item active">● Dashboard</div>
-      <div class="nav-item">○ Productos</div>
-      <div class="nav-item">○ Entrada</div>
-      <div class="nav-item">○ Salida</div>
-      <div class="nav-item">○ Alertas</div>
-      <div class="nav-item">○ Reportes</div>
-      <div class="nav-item">○ Usuarios</div>
-    </div>
-    <div class="content">
-      <div class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Productos</div><div class="kpi-val">48</div></div>
-        <div class="kpi"><div class="kpi-label">Stock crítico</div><div class="kpi-val warn">3</div></div>
-        <div class="kpi"><div class="kpi-label">Por vencer</div><div class="kpi-val danger">2</div></div>
-        <div class="kpi"><div class="kpi-label">Valor total</div><div class="kpi-val" style="font-size:13px">$4.2M</div></div>
+<div class="screen-section">
+  <div class="screen-label">Pantalla 1 — Login / Acceso administrador</div>
+  <div class="screen">
+    <div class="login-page">
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24"><path d="M19 8h-1V6a6 6 0 0 0-12 0v2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM12 17a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0v2z"/></svg>
       </div>
-      <p class="section-title">Movimientos recientes</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Producto</th><th>Tipo</th><th>Cant.</th><th>Usuario</th></tr></thead>
-          <tbody>
-            <tr><td>Catéter 18G</td><td><span class="badge badge-ok">ENTRADA</span></td><td>50</td><td>admin@</td></tr>
-            <tr><td>Insulina Humalog</td><td><span class="badge badge-danger">SALIDA</span></td><td>10</td><td>bodeguero@</td></tr>
-            <tr><td>Jeringa 5ml</td><td><span class="badge badge-ok">ENTRADA</span></td><td>200</td><td>admin@</td></tr>
-          </tbody>
-        </table>
+      <div class="login-brand">Input Medical</div>
+      <div class="login-tagline">Sistemas de Gestión</div>
+      <div class="login-card">
+        <h2>Acceso Administrador</h2>
+        <p>Inicie sesión para gestionar el inventario y las ventas de Input Medical Chile.</p>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Email</label>
+          <div class="form-input placeholder">✉ nombre@inputmedical.cl</div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Password</label>
+          <div class="form-input placeholder" style="justify-content:space-between">🔒 ••••••••  <span style="font-size:16px;color:#aaa">👁</span></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-secondary)"><input type="checkbox" style="width:13px;height:13px"> Recordar sesión</label>
+          <a href="#" style="color:var(--primary);font-size:12px;text-decoration:none">¿Olvidó su clave?</a>
+        </div>
+        <button class="btn-primary" style="width:100%;justify-content:center;min-height:42px;font-size:14px;border-radius:8px">Iniciar Sesión →</button>
+        <div class="login-bottom">Sistema de uso restringido para personal autorizado.<br>
+          <span class="server-badge"><span class="dot" style="background:#f59e0b"></span>SERVIDOR: CL-SANTIAGO-01</span>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<p class="screen-label">3 — Productos</p>
-<div class="screen">
-  <div class="topbar">
-    <div style="width:18px;height:18px;background:#185FA5;border-radius:4px"></div>
-    <span class="topbar-title">Input Medical</span>
-    <span class="topbar-role">Super Admin</span>
-  </div>
-  <div class="layout">
-    <div class="sidebar">
-      <div class="nav-item">○ Dashboard</div>
-      <div class="nav-item active">● Productos</div>
-      <div class="nav-item">○ Entrada</div>
-      <div class="nav-item">○ Salida</div>
-      <div class="nav-item">○ Alertas</div>
-      <div class="nav-item">○ Reportes</div>
-      <div class="nav-item">○ Usuarios</div>
-    </div>
-    <div class="content">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <p class="section-title" style="margin:0">Inventario de productos</p>
-        <button class="btn btn-primary">+ Nuevo producto</button>
+<!-- ══════════ DASHBOARD ══════════ -->
+<div class="screen-section">
+  <div class="screen-label">Pantalla 2 — Panel de control (Dashboard)</div>
+  <div class="screen">
+    <div class="app-layout">
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3zm0 6h18v4H3zm0 6h18v4H3z"/></svg></div>
+          <div><div class="brand-text">Admin Panel</div><div class="brand-sub">Input Medical Chile</div></div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Products</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Register Sale</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Reports</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Alerts</div>
+        </div>
+        <div class="sidebar-footer">
+          <button class="btn-primary" style="width:100%;justify-content:center;font-size:12px;min-height:32px;border-radius:6px">📊 New Report</button>
+        </div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>SKU</th><th>Nombre</th><th>Stock</th><th>Precio</th><th>Estado</th></tr></thead>
-          <tbody>
-            <tr><td>MED-CAT-18G</td><td>Catéter 18G</td><td>1250</td><td>$1.200</td><td><span class="badge badge-ok">OK</span></td></tr>
-            <tr><td>MED-INS-HUM</td><td>Insulina Humalog</td><td>180</td><td>$8.500</td><td><span class="badge badge-ok">OK</span></td></tr>
-            <tr><td>MED-SUT-CUR</td><td>Sutura Curva 45mm</td><td>8</td><td>$3.200</td><td><span class="badge badge-danger">Crítico</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="total-row">
-        <span style="font-size:11px;color:#888">Valor total inventario</span>
-        <span style="font-size:14px;font-weight:500">$4.218.000</span>
+      <div class="main">
+        <div class="topbar">
+          <span class="topbar-title">Panel de Control</span>
+          <div class="topbar-right">
+            <div class="avatar">BA</div>
+            <div class="user-info"><div class="user-name">Blanca Aedo</div><div class="user-role">Inventory Admin</div></div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="alert-banner">⚠️ <div><strong>Tienes 5 productos próximos a vencer</strong> dentro de los próximos 30 días.</div><a href="#">Ver Detalles</a></div>
+          <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-label">Total Productos</div><div class="kpi-value blue">234</div><div class="kpi-sub">+2% hoy</div></div>
+            <div class="kpi-card"><div class="kpi-label">Stock Crítico</div><div class="kpi-value red">12</div><div class="kpi-sub">Acción inmediata requerida</div></div>
+            <div class="kpi-card"><div class="kpi-label">Próximos a Vencer</div><div class="kpi-value amber">5</div><div class="kpi-sub">Dentro de los próximos 30 días</div></div>
+            <div class="kpi-card"><div class="kpi-label">Movimientos Hoy</div><div class="kpi-value green">8</div><div class="kpi-sub">Transacciones procesadas</div></div>
+          </div>
+          <div class="section-header">
+            <div class="section-title-lg">Movimientos Recientes</div>
+            <div style="display:flex;gap:8px"><button class="btn-ghost">Descargar CSV</button><button class="btn-ghost">Filtrar</button></div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Fecha/Hora</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Responsable</th></tr></thead>
+            <tbody>
+              <tr><td style="color:var(--text-muted);font-size:12px">24/05/2024 14:20</td><td><span class="badge badge-green">ENTRADA</span></td><td>Insulina Humalog 100 UI/ml</td><td class="amount-pos">+50</td><td style="font-size:12px;color:var(--text-muted)">Dr. Ricardo Gomez</td></tr>
+              <tr><td style="color:var(--text-muted);font-size:12px">24/05/2024 12:45</td><td><span class="badge badge-red">SALIDA</span></td><td>Jeringas Desechables 5ml</td><td class="amount-neg">-120</td><td style="font-size:12px;color:var(--text-muted)">Enf. Maria Torres</td></tr>
+              <tr><td style="color:var(--text-muted);font-size:12px">24/05/2024 11:15</td><td><span class="badge badge-green">ENTRADA</span></td><td>Guantes de Nitrilo (M)</td><td class="amount-pos">+200</td><td style="font-size:12px;color:var(--text-muted)">Blanca Aedo</td></tr>
+              <tr><td style="color:var(--text-muted);font-size:12px">24/05/2024 09:30</td><td><span class="badge badge-red">SALIDA</span></td><td>Amoxicilina 500mg</td><td class="amount-neg">-20</td><td style="font-size:12px;color:var(--text-muted)">Enf. Juan Soto</td></tr>
+            </tbody>
+          </table>
+          <div style="text-align:center;padding-top:12px"><a href="#" style="font-size:13px;color:var(--primary);font-weight:500;text-decoration:none">Ver historial completo de movimientos →</a></div>
+        </div>
+        <div class="footer">
+          <div><div class="footer-brand">Input Medical Chile</div><div class="footer-desc">Distribución de insumos médicos de alta precisión.</div></div>
+          <div><div class="footer-title">Contacto</div><div class="footer-link">Phone +56</div><div class="footer-link">Email</div></div>
+          <div><div class="footer-title">Ubicación</div><div class="footer-link">Address</div><div class="footer-link">Business Hours</div></div>
+          <div class="footer-copy">© 2024 Input Medical Chile.<br>Todos los derechos reservados.</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<p class="screen-label">4 — Registrar salida</p>
-<div class="screen">
-  <div class="topbar">
-    <div style="width:18px;height:18px;background:#185FA5;border-radius:4px"></div>
-    <span class="topbar-title">Input Medical</span>
-    <span class="topbar-role">Bodeguero</span>
-  </div>
-  <div class="layout">
-    <div class="sidebar">
-      <div class="nav-item">○ Dashboard</div>
-      <div class="nav-item">○ Productos</div>
-      <div class="nav-item">○ Entrada</div>
-      <div class="nav-item active">● Salida</div>
-      <div class="nav-item">○ Alertas</div>
-      <div class="nav-item">○ Reportes</div>
-    </div>
-    <div class="content">
-      <p class="section-title">Registrar salida de producto</p>
-      <div class="form-row">
-        <div class="form-group">
-          <span class="form-label">Código de barras / SKU</span>
-          <div class="form-input mono">780123456789</div>
+<!-- ══════════ PRODUCTOS ══════════ -->
+<div class="screen-section">
+  <div class="screen-label">Pantalla 3 — Gestión de productos</div>
+  <div class="screen">
+    <div class="app-layout">
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3zm0 6h18v4H3zm0 6h18v4H3z"/></svg></div>
+          <div><div class="brand-text">Admin Panel</div><div class="brand-sub">Input Medical Chile</div></div>
         </div>
-        <div class="form-group">
-          <span class="form-label">Cantidad</span>
-          <div class="form-input">10</div>
+        <div class="sidebar-nav">
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Products</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Register Sale</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Reports</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg> Alerts</div>
+        </div>
+        <div class="sidebar-footer">
+          <div class="user-chip"><div class="avatar">AD</div><div class="user-info"><div class="user-name">Administrador</div><div class="user-role" style="color:var(--primary)">admin@inputmedical.cl</div></div></div>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <span class="form-label">Motivo</span>
-          <div class="form-input" style="justify-content:space-between">VENTA ▾</div>
+      <div class="main">
+        <div class="topbar">
+          <span class="topbar-title">Gestión de Productos</span>
+          <div class="topbar-right" style="font-size:12px;color:var(--text-muted)">📅 Octubre 24, 2024<div class="avatar" style="margin-left:8px">AD</div> Profile</div>
         </div>
-        <div class="form-group">
-          <span class="form-label">Precio vigente</span>
-          <div class="form-input" style="color:#aaa">$1.200 (auto)</div>
+        <div class="content">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+            <div class="search-bar" style="max-width:100%;flex:1">🔍 Buscar por nombre o código...</div>
+            <button class="btn-primary">⊕ Agregar Producto</button>
+            <button class="btn-ghost" style="background:var(--success-bg);color:var(--success);border-color:var(--success)">⬇ Exportar a Excel</button>
+          </div>
+          <div class="filter-row">
+            <div class="filter-chip">Category: All ▾</div>
+            <div class="filter-chip">Stock Status: All ▾</div>
+            <div class="filter-chip">A↕ Sort A-Z ▾</div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Barcode</th><th>Nombre</th><th>Categoría</th><th>Stock Actual</th><th>Stock Mínimo</th><th>Precios</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td style="font-size:11px;color:var(--text-muted);font-family:monospace">780123456789</td><td style="font-weight:600">Catéter Intravenoso 18G</td><td><span class="tag">INSUMOS</span></td><td>1,250</td><td>200</td><td style="font-weight:600">$15.500</td><td><span class="status-dot status-ok"></span><span style="color:var(--success);font-weight:600;font-size:12px">OK</span></td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted);font-family:monospace">780987654321</td><td style="font-weight:600">Mascarilla Quirúrgica N95</td><td><span class="tag" style="background:#f3f0ff;color:#5b21b6">PROTECCIÓN</span></td><td style="color:var(--warn);font-weight:600">85</td><td>100</td><td style="font-weight:600">$2.400</td><td><span class="status-dot status-warn"></span><span style="color:var(--warn);font-weight:600;font-size:12px">BAJO</span></td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted);font-family:monospace">780555666777</td><td style="font-weight:600">Alcohol Gel 1L</td><td><span class="tag" style="background:#f0fdf4;color:#166534">HIGIENE</span></td><td style="color:var(--danger);font-weight:700">12</td><td>50</td><td style="font-weight:600">$12.990</td><td><span class="status-dot status-danger"></span><span style="color:var(--danger);font-weight:600;font-size:12px">CRÍTICO</span></td></tr>
+              <tr><td style="font-size:11px;color:var(--text-muted);font-family:monospace">780333222111</td><td style="font-weight:600">Guantes de Nitrilo (M)</td><td><span class="tag" style="background:#f3f0ff;color:#5b21b6">PROTECCIÓN</span></td><td>5,000</td><td>500</td><td style="font-weight:600">$8.500</td><td><span class="status-dot status-ok"></span><span style="color:var(--success);font-weight:600;font-size:12px">OK</span></td></tr>
+            </tbody>
+          </table>
+          <div class="pagination"><span>Mostrando 1-10 de 240 productos</span><div class="page-btns"><div class="page-btn">‹</div><div class="page-btn active">1</div><div class="page-btn">2</div><div class="page-btn">3</div><div class="page-btn">…</div><div class="page-btn">24</div><div class="page-btn">›</div></div></div>
         </div>
-      </div>
-      <div class="divider"></div>
-      <div style="background:#f5f5f0;border-radius:8px;padding:10px;font-size:11px;margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#888">Producto</span><span>Catéter Intravenoso 18G</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#888">Lote (FIFO)</span><span>LOT-240101-A · vence 31/12/2026</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:#888">Total venta</span><span style="font-weight:500">$12.000</span></div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn">Cancelar</button>
-        <button class="btn btn-primary">Confirmar salida</button>
       </div>
     </div>
   </div>
 </div>
 
-<p class="screen-label">5 — Alertas</p>
-<div class="screen">
-  <div class="topbar">
-    <div style="width:18px;height:18px;background:#185FA5;border-radius:4px"></div>
-    <span class="topbar-title">Input Medical</span>
-    <span class="topbar-role">Admin</span>
-  </div>
-  <div class="layout">
-    <div class="sidebar">
-      <div class="nav-item">○ Dashboard</div>
-      <div class="nav-item">○ Productos</div>
-      <div class="nav-item">○ Entrada</div>
-      <div class="nav-item">○ Salida</div>
-      <div class="nav-item active">● Alertas</div>
-      <div class="nav-item">○ Reportes</div>
-      <div class="nav-item">○ Usuarios</div>
+<!-- ══════════ INGRESAR PRODUCTO ══════════ -->
+<div class="screen-section">
+  <div class="screen-label">Pantalla 4 — Ingresar / editar producto</div>
+  <div class="screen">
+    <div class="app-layout">
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3zm0 6h18v4H3zm0 6h18v4H3z"/></svg></div>
+          <div><div class="brand-text">Admin Panel</div><div class="brand-sub">Input Medical Chile</div></div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Products</div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/></svg> Register Sale</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Reports</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg> Alerts</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <span class="topbar-title">Ingresar Nuevo Producto</span>
+          <div class="topbar-right"><div class="avatar">BA</div> Blanca Aedo <span style="color:var(--text-muted);font-size:11px">Administrador Senior</span> ▾</div>
+        </div>
+        <div class="content">
+          <div class="scan-zone">
+            <div class="scan-icon">▦</div>
+            <div class="scan-title">Escanear Código de Barras</div>
+            <div class="scan-sub">Utilice el lector para ingresar el código automáticamente</div>
+            <div class="form-input focused" style="max-width:320px;margin:0 auto;font-family:monospace;letter-spacing:.1em;color:var(--primary)">Esperando escaneo...</div>
+          </div>
+          <div class="form-section-title">ℹ Información General</div>
+          <div class="form-grid form-grid-1" style="margin-bottom:10px"><div class="form-group"><label>Nombre del Producto</label><div class="form-input placeholder">Ej: Catéter Endovenoso 18G</div></div></div>
+          <div class="form-grid" style="margin-bottom:10px">
+            <div class="form-group"><label>Categoría</label><div class="form-select">INSUMOS <span>▾</span></div></div>
+            <div class="form-group"><label>Stock Mínimo (Alerta)</label><div class="form-input">10</div></div>
+          </div>
+          <div class="form-grid form-grid-1" style="margin-bottom:16px"><div class="form-group"><label>Precio Compra CLP</label><div class="form-input">$ 0</div></div></div>
+          <div class="divider"></div>
+          <div class="form-section-title">📋 Detalles de Lote e Ingreso</div>
+          <div class="form-grid" style="margin-bottom:10px">
+            <div class="form-group"><label>Código de Lote</label><div class="form-input placeholder">LOT-2024-XXXX</div></div>
+            <div class="form-group"><label>Fecha Vencimiento</label><div class="form-input placeholder">mm/dd/yyyy 📅</div></div>
+          </div>
+          <div class="form-grid" style="margin-bottom:10px">
+            <div class="form-group"><label>Cantidad Inicial</label><div class="form-input">0</div></div>
+            <div class="form-group"><label>Proveedor</label><div class="form-input placeholder">Ej: Medline Industries</div></div>
+          </div>
+          <div class="form-group" style="margin-bottom:20px"><label>Responsable del Registro</label><div class="form-input" style="color:var(--primary)">🛡 Blanca Aedo <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">Lectura obligatoria</span></div></div>
+          <div class="row-btns"><button class="btn-outline">Cancelar</button><button class="btn-primary">💾 Guardar Producto</button></div>
+        </div>
+      </div>
     </div>
-    <div class="content">
-      <p class="section-title">Stock crítico</p>
-      <div class="alert-row alert-danger">▲ Sutura Curva 45mm — stock: 8 (mín: 20)</div>
-      <div class="alert-row alert-warn">▲ Catéter Triple Lumen — stock: 45 (mín: 50)</div>
-      <div class="divider"></div>
-      <p class="section-title">Vencimientos próximos</p>
-      <div class="alert-row alert-danger">✕ Catéter Triple Lumen — LOT-230910-A · venció hace 75 días</div>
-      <div class="alert-row alert-warn">! Insulina Humalog — LOT-240601-A · vence en 22 días</div>
+  </div>
+</div>
+
+<!-- ══════════ REGISTRAR SALIDA ══════════ -->
+<div class="screen-section">
+  <div class="screen-label">Pantalla 5 — Registrar salida de producto (FIFO)</div>
+  <div class="screen">
+    <div class="app-layout">
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3zm0 6h18v4H3zm0 6h18v4H3z"/></svg></div>
+          <div><div class="brand-text">Admin Panel</div><div class="brand-sub">Input Medical Chile</div></div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Products</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Register Sale</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Reports</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg> Alerts</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <span class="topbar-title">Registrar Salida de Producto</span>
+          <div class="topbar-right">
+            <div class="scanner-badge"><div class="dot"></div> Scanner Active</div>
+            🔔 <div class="avatar">JU</div> Admin user avatar
+          </div>
+        </div>
+        <div class="content" style="display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start">
+          <div>
+            <div style="background:var(--surface-low);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;background:var(--info-bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">▦</div>
+              <div><div style="font-weight:600;margin-bottom:4px">Escanear Producto</div><div style="font-size:12px;color:var(--text-muted)">Escanee el código de barras o QR para buscar automáticamente.</div></div>
+              <div class="search-bar" style="max-width:240px">🔍 Buscar por SKU o Nombre</div>
+            </div>
+            <div style="background:var(--surface-white);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;display:flex;gap:14px;align-items:center">
+              <div style="width:80px;height:72px;background:var(--surface-low);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">💉</div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <span class="badge badge-green" style="font-size:11px">IN STOCK</span>
+                  <span style="font-size:28px;font-weight:800;color:var(--primary)">45</span>
+                </div>
+                <div style="font-size:18px;font-weight:700;margin-bottom:2px">Catéter Ve...</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">SKU: MED-CAT-3L-2024 <span style="margin-left:4px;color:var(--text-muted)">UNIDADES DISPONIBLES</span></div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">Lotes disponibles (Seleccione uno)</div>
+                <table class="lotes-table">
+                  <thead><tr><th>Lote</th><th>Vencimiento</th><th>Cantidad</th></tr></thead>
+                  <tbody>
+                    <tr class="selected"><td style="color:var(--primary);font-weight:700">LOT-230910-A</td><td>12 Oct 2025</td><td>25 Unid.</td></tr>
+                    <tr><td>LOT-231105-B</td><td>05 Ene 2026</td><td>20 Unid.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div style="background:var(--surface-white);border-radius:var(--radius-md);padding:16px">
+              <div style="font-size:14px;font-weight:700;margin-bottom:14px">Detalles de la Salida</div>
+              <div class="form-grid" style="margin-bottom:12px">
+                <div class="form-group"><label>Lote Seleccionado</label><div class="form-input mono">LOT-230910-A</div></div>
+                <div class="form-group"><label>Cantidad a Retirar (Máx. 25)</label><div class="form-input">0 <span style="margin-left:auto;color:var(--text-muted);font-size:12px">Unid.</span></div></div>
+              </div>
+              <div class="form-grid" style="margin-bottom:12px">
+                <div class="form-group"><label>Cliente / Destino</label><div class="form-select">Hospital Clínico San Borja <span>▾</span></div></div>
+                <div class="form-group"><label>Motivo</label><div class="motivo-btns"><div class="motivo-btn active">Venta</div><div class="motivo-btn">Traslado</div><div class="motivo-btn">Merma</div></div></div>
+              </div>
+              <div class="form-group" style="margin-bottom:12px"><label>Observaciones</label><div class="form-textarea">Añada detalles adicionales sobre esta transacción...</div></div>
+              <div class="form-group"><label>Responsable</label><div class="form-input"><div class="avatar" style="width:22px;height:22px;font-size:9px;margin-right:8px">JP</div> Juan Pérez (Admin)</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="impact-panel">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px;font-weight:700;color:white">📊 Impacto en Inventario</div>
+              <div class="impact-label">Stock Actual</div><div class="impact-value neutral">45</div>
+              <div class="impact-label">Salida</div><div class="impact-value neg">- 10</div>
+              <div class="impact-label">Nuevo Stock</div><div class="impact-value pos">35</div>
+              <button class="btn-primary" style="width:100%;justify-content:center;margin-bottom:8px">🛡 Registrar Salida</button>
+              <button class="btn-ghost" style="width:100%;text-align:center">Cancelar Operación</button>
+              <div style="margin-top:10px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:10px;color:#8892a4;line-height:1.5"><div style="font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Protocolo de Seguridad</div>Se generará guía de despacho electrónica y notificación contable.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ALERTAS ══════════ -->
+<div class="screen-section">
+  <div class="screen-label">Pantalla 6 — Monitor de alertas</div>
+  <div class="screen">
+    <div class="app-layout">
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3zm0 6h18v4H3zm0 6h18v4H3z"/></svg></div>
+          <div><div class="brand-text">Admin Panel</div><div class="brand-sub">Input Medical Chile</div></div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Products</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/></svg> Register Sale</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Reports</div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Alerts</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <span class="topbar-title">Alertas del Sistema</span>
+          <div class="topbar-right"><div class="search-bar" style="max-width:200px">🔍 Search alerts...</div> ⚙ Profile <div class="avatar">AD</div></div>
+        </div>
+        <div class="content">
+          <div style="margin-bottom:16px"><div style="font-size:22px;font-weight:800;margin-bottom:4px">Monitor de Estado</div><div style="font-size:13px;color:var(--text-muted)">Gestión proactiva de inventario médico. Supervise caducidades, niveles de stock y retiros críticos para garantizar el cumplimiento normativo.</div></div>
+          <div class="tabs">
+            <div class="tab active">Todas (7)</div>
+            <div class="tab">Vencimientos (5)</div>
+            <div class="tab">Stock Bajo (2)</div>
+          </div>
+          <div class="alert-card critical">
+            <div class="alert-icon red">✕</div>
+            <div class="alert-body">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="badge badge-red" style="font-size:9px">CRÍTICO</span> <span class="alert-sku">SKU: IM-9920-X</span></div>
+              <div class="alert-title">Producto vencido</div>
+              <div class="alert-product">Sutura Mecánica Curva 45mm</div>
+            </div>
+            <div style="text-align:right"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px">Estado</div><div style="color:var(--danger);font-weight:700;font-size:13px">15 días vencido</div></div>
+            <button class="btn-danger">Retirar del inventario</button>
+          </div>
+          <div class="alert-card warning">
+            <div class="alert-icon amber">⚠</div>
+            <div class="alert-body">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="badge badge-amber" style="font-size:9px">STOCK</span> <span class="alert-sku">SKU: IM-1102-B</span></div>
+              <div class="alert-title">Stock crítico</div>
+              <div class="alert-product">Guantes Quirúrgicos Látex Talla 7.5</div>
+            </div>
+            <div style="text-align:right"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px">Inventario</div><div style="font-weight:700;font-size:13px">3 unidades <span style="color:var(--text-muted);font-weight:400">(Mín: 10)</span></div></div>
+            <button class="btn-primary" style="font-size:12px;min-height:32px">🛒 Reabastecer</button>
+          </div>
+          <div class="alert-card info">
+            <div class="alert-icon blue">🕐</div>
+            <div class="alert-body">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="badge badge-blue" style="font-size:9px">PREVENTIVO</span> <span class="alert-sku">SKU: IM-4456-M</span></div>
+              <div class="alert-title">Producto próximo a vencer</div>
+              <div class="alert-product">Malla de Polipropileno 15×15cm</div>
+            </div>
+            <div style="text-align:right"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px">Vencimiento</div><div style="font-weight:700;font-size:14px">31/03/2028</div><div style="font-size:11px;color:var(--text-muted)">(31 días restantes)</div></div>
+            <button class="btn-outline">Ver producto</button>
+          </div>
+          <div class="alert-card warning">
+            <div class="alert-icon amber">⚠</div>
+            <div class="alert-body">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="badge badge-amber" style="font-size:9px">STOCK</span> <span class="alert-sku">SKU: IM-5512-P</span></div>
+              <div class="alert-title">Stock crítico</div>
+              <div class="alert-product">Catéter Venoso Central 3 Lumens</div>
+            </div>
+            <div style="text-align:right"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px">Inventario</div><div style="font-weight:700;font-size:13px">0 unidades <span style="color:var(--text-muted);font-weight:400">(Mín: 5)</span></div></div>
+            <button class="btn-primary" style="font-size:12px;min-height:32px">🛒 Reabastecer</button>
+          </div>
+          <div style="text-align:center;padding:24px 0;color:var(--text-muted);font-size:13px"><div style="width:36px;height:36px;border-radius:50%;background:var(--surface-low);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:18px">✓</div>Se han revisado todas las alertas<div style="font-size:11px;margin-top:4px">Actualizado hace 5 minutos</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ REPORTES ══════════ -->
+<div class="screen-section">
+  <div class="screen-label">Pantalla 7 — Análisis de operaciones (Reportes)</div>
+  <div class="screen">
+    <div class="app-layout">
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3zm0 6h18v4H3zm0 6h18v4H3z"/></svg></div>
+          <div><div class="brand-text">Admin Panel</div><div class="brand-sub">Input Medical Chile</div></div>
+        </div>
+        <div class="sidebar-nav">
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Products</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/></svg> Register Sale</div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Reports</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg> Alerts</div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <span class="topbar-title">Reportes de Inventario</span>
+          <div class="topbar-right">🔍 <div class="avatar">SU</div> Admin User <span style="font-size:10px;color:var(--text-muted)">SUPERUSUARIO</span></div>
+        </div>
+        <div class="content">
+          <div style="margin-bottom:20px"><div style="font-size:22px;font-weight:800;margin-bottom:4px">Análisis de Operaciones</div><div style="font-size:13px;color:var(--text-muted)">Generación de informes clínicos y logísticos detallados para la toma de decisiones estratégicas.</div></div>
+          <div class="report-grid" style="margin-bottom:16px">
+            <div class="report-card"><div class="report-tag green">Tiempo Real</div><div style="font-size:18px;margin-bottom:4px">📈</div><div class="report-title">Stock Actual</div><div class="report-desc">Detalle consolidado de existencias, lotes y ubicaciones físicas actuales.</div><button class="btn-primary" style="font-size:12px;min-height:32px">Generar Reporte →</button></div>
+            <div class="report-card"><div class="report-tag red">Crítico</div><div style="font-size:18px;margin-bottom:4px">📅</div><div class="report-title">Productos por Vencer</div><div class="report-desc">Identifique insumos con fecha de caducidad próxima por rango.</div><div class="form-group" style="margin-bottom:10px"><label>Rango de días</label><div class="form-select">Próximos 30 días <span>▾</span></div></div><button class="btn-outline" style="font-size:12px">Generar Listado</button></div>
+            <div class="report-card"><div class="report-tag blue">Kardex</div><div style="font-size:18px;margin-bottom:4px">↔</div><div class="report-title">Movimientos</div><div class="report-desc">Trazabilidad completa de entradas, salidas y ajustes de inventario.</div><div class="form-grid" style="margin-bottom:10px;grid-template-columns:1fr 1fr"><div class="form-group"><label>Desde</label><div class="form-input placeholder" style="font-size:11px">mm/dd/yyyy</div></div><div class="form-group"><label>Hasta</label><div class="form-input placeholder" style="font-size:11px">mm/dd/yyyy</div></div></div><button class="btn-outline" style="font-size:12px">Generar Kardex</button></div>
+          </div>
+          <div class="report-card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+              <div><div style="font-size:18px;margin-bottom:4px">📊</div><div class="report-title">Ranking de Productos Más Vendidos</div><div class="report-desc">Analice los productos con mayor rotación durante los últimos 30 días. Este reporte incluye el volumen de ventas, margen de contribución y frecuencia de salida para optimizar sus pedidos de reabastecimiento.</div></div>
+              <div style="flex-shrink:0;text-align:right"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">Periodo Seleccionado</div><div style="font-size:14px;font-weight:600;margin-bottom:10px">📅 Últimos 30 días</div><button class="btn-primary">Generar Análisis 📊</button></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div><div style="font-size:15px;font-weight:700">Vista Previa del Reporte</div><div style="font-size:12px;color:var(--text-muted)">Mostrando últimos 5 registros generados</div></div>
+            <div style="display:flex;gap:6px"><button class="btn-primary" style="font-size:12px;min-height:30px">⬇ Excel</button><button class="btn-ghost">📄 PDF</button><button class="btn-ghost">🖨 Imprimir</button></div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>SKU / Código</th><th>Descripción Producto</th><th>Lote</th><th>Stock</th><th>Vencimiento</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sku-link">MED-4492-X</span><div class="product-sub">Suministros Quirúrgicos</div></td><td style="font-weight:600">Catéter Venoso Central 3L</td><td style="font-family:monospace;font-size:11px">LT-99201</td><td style="font-weight:700">240</td><td style="font-size:12px">12 Oct 2025</td><td><span class="badge badge-green">ÓPTIMO</span></td></tr>
+              <tr><td><span class="sku-link">INS-1102-B</span><div class="product-sub">Farmacia Crítica</div></td><td style="font-weight:600">Insulina Glargina 100UI/ml</td><td style="font-family:monospace;font-size:11px">BT-4456</td><td style="font-weight:700">1,200</td><td style="font-size:12px;color:var(--warn)">05 May 2024</td><td><span class="badge badge-amber">POR VENCER</span></td></tr>
+              <tr><td><span class="sku-link">GAS-8812-P</span><div class="product-sub">Material de Curación</div></td><td style="font-weight:600">Gasa Estéril 10×10cm (Caja 50)</td><td style="font-family:monospace;font-size:11px">LT-1102</td><td style="font-weight:700;color:var(--warn)">45</td><td style="font-size:12px">20 Ene 2026</td><td><span class="badge badge-amber">STOCK BAJO</span></td></tr>
+              <tr><td><span class="sku-link">SUF-3329-M</span><div class="product-sub">Anestesiología</div></td><td style="font-weight:600">Sufentanilo 0.05mg/ml</td><td style="font-family:monospace;font-size:11px">RX-8822</td><td style="font-weight:700">18</td><td style="font-size:12px">15 Ago 2024</td><td><span class="badge badge-green">ÓPTIMO</span></td></tr>
+            </tbody>
+          </table>
+          <div style="text-align:center;padding-top:10px"><a href="#" style="font-size:13px;color:var(--primary);font-weight:500;text-decoration:none">Ver más resultados ▾</a></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
