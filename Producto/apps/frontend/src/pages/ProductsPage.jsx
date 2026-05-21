@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import { PageLayout } from '../components/Layout'
 import { formatCLP, tieneDescuento } from '../services/precio'
+import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 export default function ProductsPage() {
@@ -10,7 +11,8 @@ export default function ProductsPage() {
   const [granTotal, setGranTotal] = useState(0)
   const [busqueda,  setBusqueda]  = useState('')
   const [loading,   setLoading]   = useState(true)
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
+  const { isAdmin } = useAuth()
 
   useEffect(() => { fetchProductos() }, [])
 
@@ -40,15 +42,12 @@ export default function ProductsPage() {
   )
 
   const totalFiltrado = filtrados.reduce((acc, p) => acc + Number(p.valor_total_producto || 0), 0)
-
   const estadoColor = (p) => p.stock_actual === 0 ? 'text-error' : p.stock_actual <= p.stock_minimo ? 'text-tertiary' : 'text-secondary'
   const estadoLabel = (p) => p.stock_actual === 0 ? '● Sin stock' : p.stock_actual <= p.stock_minimo ? '● Crítico' : '● OK'
 
   return (
     <PageLayout title="Gestión de Productos">
       <div className="space-y-6">
-
-        {/* Buscador + botón */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-2xl">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
@@ -56,11 +55,13 @@ export default function ProductsPage() {
               className="w-full h-14 pl-12 pr-4 bg-surface-container-high border-none rounded-xl outline-none focus:ring-2 focus:ring-primary"
               placeholder="Buscar por nombre, SKU o código de barras..." />
           </div>
-          <Link to="/add-product"
-            className="h-14 px-8 bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg hover:opacity-90">
-            <span className="material-symbols-outlined">add_circle</span>
-            Nuevo Producto
-          </Link>
+          {isAdmin && (
+            <Link to="/add-product"
+              className="h-14 px-8 bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg hover:opacity-90">
+              <span className="material-symbols-outlined">add_circle</span>
+              Nuevo Producto
+            </Link>
+          )}
         </div>
 
         {/* Banner valor total */}
@@ -79,9 +80,7 @@ export default function ProductsPage() {
             <p className="text-3xl font-black text-primary">
               {loading ? '—' : formatCLP(busqueda ? totalFiltrado : granTotal)}
             </p>
-            {busqueda && (
-              <p className="text-xs text-on-surface-variant mt-1">Total completo: {formatCLP(granTotal)}</p>
-            )}
+            {busqueda && <p className="text-xs text-on-surface-variant mt-1">Total completo: {formatCLP(granTotal)}</p>}
           </div>
         </div>
 
@@ -99,23 +98,21 @@ export default function ProductsPage() {
                   <th className="px-6 py-5">V.DESC</th>
                   <th className="px-6 py-5">Valor Total</th>
                   <th className="px-6 py-5">Estado</th>
-                  <th className="px-6 py-5 text-right">Acciones</th>
+                  {/* Columna acciones solo para admin+ */}
+                  {isAdmin && <th className="px-6 py-5 text-right">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {loading ? (
-                  <tr><td colSpan={9} className="px-6 py-10 text-center text-on-surface-variant">Cargando...</td></tr>
+                  <tr><td colSpan={isAdmin ? 9 : 8} className="px-6 py-10 text-center text-on-surface-variant">Cargando...</td></tr>
                 ) : filtrados.length === 0 ? (
-                  <tr><td colSpan={9} className="px-6 py-10 text-center text-on-surface-variant">Sin resultados</td></tr>
+                  <tr><td colSpan={isAdmin ? 9 : 8} className="px-6 py-10 text-center text-on-surface-variant">Sin resultados</td></tr>
                 ) : filtrados.map(p => (
                   <tr key={p.id} className="hover:bg-zinc-50 transition-colors">
-
-                    {/* ── Barcode + SKU ── */}
                     <td className="px-6 py-5">
                       <p className="font-mono text-sm font-bold">{p.codigo_barras || '—'}</p>
                       <p className="text-xs text-on-surface-variant mt-0.5">{p.sku}</p>
                     </td>
-
                     <td className="px-6 py-5 font-bold">
                       <Link to={`/products/${p.id}/history`} className="hover:text-primary">{p.nombre}</Link>
                     </td>
@@ -146,29 +143,31 @@ export default function ProductsPage() {
                     <td className="px-6 py-5">
                       <span className={`font-bold text-sm ${estadoColor(p)}`}>{estadoLabel(p)}</span>
                     </td>
-                    <td className="px-6 py-5 text-right">
-                      <button onClick={() => navigate(`/add-product?edit=${p.id}`)} className="p-2 hover:bg-zinc-100 rounded-lg" title="Editar">
-                        <span className="material-symbols-outlined text-zinc-500">edit</span>
-                      </button>
-                      <button onClick={() => handleEliminar(p.id)} className="p-2 hover:bg-zinc-100 rounded-lg" title="Desactivar">
-                        <span className="material-symbols-outlined text-zinc-500">delete</span>
-                      </button>
-                    </td>
+                    {/* Botones solo para admin+ */}
+                    {isAdmin && (
+                      <td className="px-6 py-5 text-right">
+                        <button onClick={() => navigate(`/add-product?edit=${p.id}`)} className="p-2 hover:bg-zinc-100 rounded-lg" title="Editar">
+                          <span className="material-symbols-outlined text-zinc-500">edit</span>
+                        </button>
+                        <button onClick={() => handleEliminar(p.id)} className="p-2 hover:bg-zinc-100 rounded-lg" title="Desactivar">
+                          <span className="material-symbols-outlined text-zinc-500">delete</span>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
 
-              {/* Pie de tabla */}
               {!loading && filtrados.length > 0 && (
                 <tfoot>
                   <tr className="bg-zinc-50 border-t-2 border-zinc-200">
-                    <td colSpan={6} className="px-6 py-4 text-right font-black text-sm text-on-surface-variant uppercase tracking-wider">
+                    <td colSpan={isAdmin ? 6 : 6} className="px-6 py-4 text-right font-black text-sm text-on-surface-variant uppercase tracking-wider">
                       {busqueda ? `Total filtrado (${filtrados.length})` : `Gran Total (${productos.length} productos)`}
                     </td>
                     <td className="px-6 py-4 font-black text-xl text-primary">
                       {formatCLP(busqueda ? totalFiltrado : granTotal)}
                     </td>
-                    <td colSpan={2} />
+                    <td colSpan={isAdmin ? 2 : 1} />
                   </tr>
                 </tfoot>
               )}

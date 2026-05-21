@@ -5,14 +5,16 @@ const ctrl   = require('../controllers/movimientosController')
 
 router.use(auth)
 
-// Todos pueden ver
-router.get('/dashboard-stats',   ctrl.getDashboardStats)
-router.get('/alertas',           ctrl.getAlertas)
-router.get('/valor-inventario',  ctrl.getValorInventario)
-router.get('/',                  ctrl.getMovimientos)
+// Lectura — todos los roles
+router.get('/dashboard-stats',          ctrl.getDashboardStats)
+router.get('/alertas',                  ctrl.getAlertas)
+router.get('/valor-inventario',         ctrl.getValorInventario)
+router.get('/lotes/:producto_id',       ctrl.getLotesPorProducto)
+router.get('/',                         ctrl.getMovimientos)
 
-// Solo superadmin, admin y bodeguero pueden registrar movimientos
+// Escritura — superadmin, admin y bodeguero
 router.post('/entrada', requireRol('superadmin', 'admin', 'bodeguero'), ctrl.registrarEntrada)
 router.post('/salida',  requireRol('superadmin', 'admin', 'bodeguero'), ctrl.registrarSalida)
+router.post('/merma',   requireRol('superadmin', 'admin', 'bodeguero'), ctrl.registrarMerma)
 
 module.exports = router
