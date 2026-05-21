@@ -38,18 +38,17 @@ export default function ProductHistoryPage() {
     return { label: 'VENTA', cls: 'bg-primary/10 text-primary' }
   }
 
-  // Precio diferenciado: entrada = costo, salida = venta, merma = costo
-  const getPrecioLabel = (m) => {
+  const getPrecio = (m) => {
     if (!m.precio_unitario || m.precio_unitario <= 0) return null
-    if (m.tipo === 'ENTRADA') return { valor: formatCLP(m.precio_unitario), sub: 'costo', color: 'text-secondary' }
-    if (m.motivo === 'MERMA') return { valor: formatCLP(m.precio_unitario), sub: 'costo', color: 'text-error' }
-    return { valor: formatCLP(m.precio_unitario), sub: 'venta', color: 'text-primary' }
+    if (m.tipo === 'ENTRADA') return { valor: formatCLP(m.precio_unitario), color: 'text-secondary' }
+    if (m.motivo === 'MERMA') return { valor: formatCLP(m.precio_unitario), color: 'text-error' }
+    return { valor: formatCLP(m.precio_unitario), color: 'text-primary' }
   }
 
-  const getTotalDisplay = (m) => {
+  const getTotal = (m) => {
     if (!m.total || m.total <= 0) return null
-    if (m.motivo === 'MERMA')    return { valor: `-${formatCLP(m.total)}`, color: 'text-error font-black' }
-    if (m.tipo === 'ENTRADA')    return { valor: formatCLP(m.total),        color: 'text-secondary font-bold' }
+    if (m.motivo === 'MERMA') return { valor: `-${formatCLP(m.total)}`, color: 'text-error font-black' }
+    if (m.tipo === 'ENTRADA') return { valor: formatCLP(m.total),       color: 'text-secondary font-bold' }
     return { valor: formatCLP(m.total), color: 'text-primary font-bold' }
   }
 
@@ -69,7 +68,7 @@ export default function ProductHistoryPage() {
               <p className="font-mono text-xs text-on-surface-variant mt-0.5">Barcode: {producto.codigo_barras}</p>
             )}
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <div className="bg-white p-5 rounded-xl border text-center shadow-sm min-w-[120px]">
               <p className="text-xs font-bold text-zinc-400">STOCK</p>
               <p className="text-4xl font-black text-primary">{producto.stock_actual}</p>
@@ -77,24 +76,22 @@ export default function ProductHistoryPage() {
             <div className="bg-white p-5 rounded-xl border text-center shadow-sm min-w-[140px]">
               <p className="text-xs font-bold text-zinc-400">PRECIO BASE</p>
               <p className="text-2xl font-black text-secondary">{formatCLP(producto.precio_unitario)}</p>
-              {producto.precio_descuento && (
-                <p className="text-xs font-bold text-tertiary mt-1">V.DESC {formatCLP(producto.precio_descuento)}</p>
-              )}
             </div>
+            {producto.precio_descuento && (
+              <div className="bg-white p-5 rounded-xl border border-tertiary/30 text-center shadow-sm min-w-[140px]">
+                <p className="text-xs font-bold text-zinc-400">V.DESC</p>
+                <p className="text-2xl font-black text-tertiary">{formatCLP(producto.precio_descuento)}</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Leyenda de colores */}
-        <div className="flex items-center gap-4 mb-4 text-xs text-on-surface-variant">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-secondary inline-block"></span> Precio de costo (entradas/mermas)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-primary inline-block"></span> Precio de venta
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-error inline-block"></span> Pérdida (merma)
-          </span>
+        {/* Leyenda */}
+        <div className="flex items-center gap-4 mb-4 text-xs text-on-surface-variant flex-wrap bg-zinc-50 p-3 rounded-lg">
+          <span className="font-bold text-zinc-500">Leyenda:</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-secondary inline-block"></span> Entrada de stock</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-primary inline-block"></span> Venta</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-error inline-block"></span> Merma / pérdida</span>
         </div>
 
         {/* Kardex */}
@@ -121,8 +118,8 @@ export default function ProductHistoryPage() {
                   <tr><td colSpan={8} className="px-6 py-10 text-center text-on-surface-variant">Sin movimientos registrados</td></tr>
                 ) : movs.map(m => {
                   const badge  = getBadge(m)
-                  const precio = getPrecioLabel(m)
-                  const total  = getTotalDisplay(m)
+                  const precio = getPrecio(m)
+                  const total  = getTotal(m)
                   return (
                     <tr key={m.id} className="hover:bg-zinc-50">
                       <td className="px-6 py-4 font-bold whitespace-nowrap">
@@ -130,21 +127,16 @@ export default function ProductHistoryPage() {
                         <br /><span className="text-xs font-normal text-on-surface-variant">{format(new Date(m.created_at), 'HH:mm')}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-[10px] font-black ${badge.cls}`}>
-                          {badge.label}
-                        </span>
+                        <span className={`px-2 py-1 rounded text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
                       </td>
                       <td className="px-6 py-4 font-mono text-xs">{m.numero_lote || '—'}</td>
                       <td className={`px-6 py-4 text-lg font-black ${m.tipo === 'ENTRADA' ? 'text-secondary' : m.motivo === 'MERMA' ? 'text-error' : 'text-primary'}`}>
                         {m.tipo === 'ENTRADA' ? '+' : '-'}{m.cantidad}
                       </td>
                       <td className="px-6 py-4">
-                        {precio ? (
-                          <div>
-                            <span className={`font-bold ${precio.color}`}>{precio.valor}</span>
-                            <span className="text-[10px] text-zinc-400 ml-1">{precio.sub}</span>
-                          </div>
-                        ) : <span className="text-zinc-300">—</span>}
+                        {precio
+                          ? <span className={`font-bold ${precio.color}`}>{precio.valor}</span>
+                          : <span className="text-zinc-300">—</span>}
                       </td>
                       <td className="px-6 py-4">
                         {total

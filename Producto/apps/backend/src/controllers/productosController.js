@@ -1,6 +1,5 @@
 const pool = require('../config/db')
 
-// GET /api/productos
 async function getAll(req, res, next) {
   const { busqueda } = req.query
   try {
@@ -22,7 +21,6 @@ async function getAll(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// GET /api/productos/:id
 async function getById(req, res, next) {
   try {
     const { rows } = await pool.query(
@@ -38,7 +36,6 @@ async function getById(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// GET /api/productos/barcode/:codigo
 async function getByBarcode(req, res, next) {
   try {
     const { rows } = await pool.query(
@@ -54,7 +51,6 @@ async function getByBarcode(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// POST /api/productos
 async function create(req, res, next) {
   const {
     codigo_barras, sku, nombre, descripcion,
@@ -90,13 +86,13 @@ async function create(req, res, next) {
   }
 }
 
-// PUT /api/productos/:id
 async function update(req, res, next) {
   const {
     codigo_barras, sku, nombre, descripcion,
     categoria_id, stock_minimo, unidad_medida,
     tiene_vencimiento, precio_unitario, precio_descuento
   } = req.body
+
   try {
     const { rows } = await pool.query(
       `UPDATE productos
@@ -120,7 +116,6 @@ async function update(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// DELETE /api/productos/:id
 async function remove(req, res, next) {
   try {
     const { rowCount } = await pool.query(
