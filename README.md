@@ -35,12 +35,14 @@ inputmedical/
 │
 ├── supabase/
 │   └── migrations/
-│       ├── 001_schema.sql         ← Tablas, vistas, funciones FIFO
+│       ├── 001_schema.sql         ← Tablas, vistas, funciones FIFO base
 │       ├── 002_seed.sql           ← Datos de demo (sin usuario hardcodeado)
-│       ├── 003_precios.sql        ← precio_unitario + descuentos en movimientos
+│       ├── 003_precios.sql        ← precio_unitario + columnas de precio en movimientos
 │       ├── 004_valor_inventario.sql ← Vista v_valor_inventario + fn_gran_total
 │       ├── 005_precio_descuento.sql ← precio_descuento por producto (V.DESC)
-│       └── 006_roles.sql          ← Sistema de 4 roles
+│       ├── 006_roles.sql          ← Sistema de 4 roles
+│       ├── 007_entrada_precio_merma.sql ← Precio en entradas + función merma por lote
+│       └── 008_ajuste_descuento.sql ← fn_registrar_salida definitiva
 │
 ├── docker-compose.yml
 ├── .env.example
@@ -168,6 +170,8 @@ psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/003_precios.sql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/004_valor_inventario.sql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/005_precio_descuento.sql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/006_roles.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/007_entrada_precio_merma.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/008_ajuste_descuento.sql
 ```
 
 > En Supabase puedes pegar cada archivo en el **SQL Editor** del proyecto.
@@ -218,62 +222,64 @@ docker compose up -d
 
 ## 👥 Roles del sistema
 
-| Módulo              | Super Admin | Admin | Bodeguero | Visualizador |
-|---------------------|:-----------:|:-----:|:---------:|:------------:|
-| Dashboard           | ✅ | ✅ | ✅ | ✅ |
-| Ver Productos       | ✅ | ✅ | ✅ | ✅ |
+| Módulo                 | Super Admin | Admin | Bodeguero | Visualizador |
+|------------------------|:-----------:|:-----:|:---------:|:------------:|
+| Dashboard              | ✅ | ✅ | ✅ | ✅ |
+| Ver Productos          | ✅ | ✅ | ✅ | ✅ |
 | Crear/Editar Productos | ✅ | ✅ | ❌ | ❌ |
-| Registrar Entrada   | ✅ | ✅ | ✅ | ❌ |
-| Registrar Salida    | ✅ | ✅ | ✅ | ❌ |
-| Alertas             | ✅ | ✅ | ✅ | ✅ |
-| Reportes CSV        | ✅ | ✅ | ❌ | ✅ |
-| Gestión de Usuarios | ✅ | ❌ | ❌ | ❌ |
-| Precios y Descuentos| ✅ | ✅ | ❌ | ❌ |
+| Registrar Entrada      | ✅ | ✅ | ✅ | ❌ |
+| Registrar Salida/Merma | ✅ | ✅ | ✅ | ❌ |
+| Alertas                | ✅ | ✅ | ✅ | ✅ |
+| Reportes CSV           | ✅ | ✅ | ❌ | ✅ |
+| Gestión de Usuarios    | ✅ | ❌ | ❌ | ❌ |
+| Precios y Descuentos   | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
 ## 🔑 API REST — Endpoints
 
 ### Autenticación
-| Método | Endpoint         | Descripción              |
-|--------|------------------|--------------------------|
-| POST   | `/api/auth/login`| Login, retorna JWT       |
-| GET    | `/api/auth/me`   | Datos del usuario actual |
+| Método | Endpoint          | Descripción              |
+|--------|-------------------|--------------------------|
+| POST   | `/api/auth/login` | Login, retorna JWT       |
+| GET    | `/api/auth/me`    | Datos del usuario actual |
 
 ### Usuarios _(Solo Super Admin)_
-| Método | Endpoint                     | Descripción               |
-|--------|------------------------------|---------------------------|
-| GET    | `/api/usuarios`              | Listar usuarios           |
-| POST   | `/api/usuarios`              | Crear usuario             |
-| PUT    | `/api/usuarios/:id`          | Editar usuario            |
-| PUT    | `/api/usuarios/:id/password` | Cambiar contraseña        |
-| DELETE | `/api/usuarios/:id`          | Desactivar usuario        |
+| Método | Endpoint                      | Descripción               |
+|--------|-------------------------------|---------------------------|
+| GET    | `/api/usuarios`               | Listar usuarios           |
+| POST   | `/api/usuarios`               | Crear usuario             |
+| PUT    | `/api/usuarios/:id`           | Editar usuario            |
+| PUT    | `/api/usuarios/:id/password`  | Cambiar contraseña        |
+| DELETE | `/api/usuarios/:id`           | Desactivar usuario        |
 
 ### Productos
-| Método | Endpoint                         | Roles            |
-|--------|----------------------------------|------------------|
-| GET    | `/api/productos`                 | Todos            |
-| GET    | `/api/productos/barcode/:codigo` | Todos            |
-| POST   | `/api/productos`                 | SuperAdmin/Admin |
-| PUT    | `/api/productos/:id`             | SuperAdmin/Admin |
-| DELETE | `/api/productos/:id`             | SuperAdmin/Admin |
+| Método | Endpoint                          | Roles            |
+|--------|-----------------------------------|------------------|
+| GET    | `/api/productos`                  | Todos            |
+| GET    | `/api/productos/barcode/:codigo`  | Todos            |
+| POST   | `/api/productos`                  | SuperAdmin/Admin |
+| PUT    | `/api/productos/:id`              | SuperAdmin/Admin |
+| DELETE | `/api/productos/:id`              | SuperAdmin/Admin |
 
 ### Movimientos
-| Método | Endpoint                            | Roles                       |
-|--------|-------------------------------------|-----------------------------|
-| GET    | `/api/movimientos`                  | Todos                       |
-| GET    | `/api/movimientos/alertas`          | Todos                       |
-| GET    | `/api/movimientos/dashboard-stats`  | Todos                       |
-| GET    | `/api/movimientos/valor-inventario` | Todos                       |
-| POST   | `/api/movimientos/entrada`          | SuperAdmin/Admin/Bodeguero  |
-| POST   | `/api/movimientos/salida`           | SuperAdmin/Admin/Bodeguero  |
+| Método | Endpoint                              | Roles                      |
+|--------|---------------------------------------|----------------------------|
+| GET    | `/api/movimientos`                    | Todos                      |
+| GET    | `/api/movimientos/alertas`            | Todos                      |
+| GET    | `/api/movimientos/dashboard-stats`    | Todos                      |
+| GET    | `/api/movimientos/valor-inventario`   | Todos                      |
+| GET    | `/api/movimientos/lotes/:producto_id` | Todos                      |
+| POST   | `/api/movimientos/entrada`            | SuperAdmin/Admin/Bodeguero |
+| POST   | `/api/movimientos/salida`             | SuperAdmin/Admin/Bodeguero |
+| POST   | `/api/movimientos/merma`              | SuperAdmin/Admin/Bodeguero |
 
 ### Reportes _(SuperAdmin, Admin y Visualizador)_
-| Método | Endpoint                    | Descripción                     |
-|--------|-----------------------------|---------------------------------|
-| GET    | `/api/reportes/stock`       | CSV stock actual + valor total  |
-| GET    | `/api/reportes/vencimientos`| CSV productos por vencer        |
-| GET    | `/api/reportes/movimientos` | CSV Kardex completo             |
+| Método | Endpoint                     | Descripción                    |
+|--------|------------------------------|--------------------------------|
+| GET    | `/api/reportes/stock`        | CSV stock actual + valor total |
+| GET    | `/api/reportes/vencimientos` | CSV productos por vencer       |
+| GET    | `/api/reportes/movimientos`  | CSV Kardex completo            |
 
 ---
 
@@ -281,21 +287,33 @@ docker compose up -d
 
 Cada producto tiene dos campos de precio:
 
-- **Precio Normal** (`precio_unitario`) — precio de venta regular
-- **V.DESC** (`precio_descuento`) — precio rebajado opcional
+- **Precio Normal** (`precio_unitario`) — precio de venta regular definido por la empresa
+- **V.DESC** (`precio_descuento`) — precio rebajado opcional para productos con descuento
 
-El sistema usa automáticamente `precio_descuento` si existe, sino `precio_unitario`. Al registrar una salida el precio vigente se captura en el movimiento para trazabilidad histórica.
+El sistema usa automáticamente `precio_descuento` si existe, sino `precio_unitario`. Al registrar una venta el precio vigente y el descuento aplicado quedan capturados en el movimiento para trazabilidad histórica.
 
-El **Valor Total del Inventario** se calcula como `stock_actual × precio_vigente` por producto, sumado en el dashboard y en la tabla de productos.
+El **Valor Total del Inventario** se calcula como `stock_actual × precio_vigente` por producto, visible en el dashboard y en la tabla de productos.
 
 ---
 
-## ⚙️ Cómo funciona FIFO
+## 📦 Motivos de Salida
 
-La función `fn_registrar_salida` en PostgreSQL:
+| Motivo  | Genera Monto | Descripción |
+|---------|:------------:|-------------|
+| VENTA   | ✅ | Venta a cliente. Usa precio vigente y calcula descuento si aplica V.DESC. |
+| AJUSTE  | ❌ | Corrección de inventario. Solo descuenta unidades sin registrar monto. Usar cuando el conteo físico tiene menos unidades de las que dice el sistema. Si se encontraron unidades sin registrar, usar Registrar Entrada. |
+| MERMA   | ✅ | Baja de producto vencido o dañado. Requiere selección manual del lote afectado. |
+
+---
+
+## ⚙️ Cómo funciona FIFO / FEFO
+
+**Ventas y Ajustes** usan FIFO automático:
 1. Verifica que haya stock suficiente
 2. Ordena los lotes por `fecha_vencimiento ASC` (el que vence antes, primero)
 3. Descuenta del primer lote disponible
 4. Si la cantidad supera ese lote, continúa con el siguiente
-5. Registra el precio vigente del producto en cada movimiento
+5. Registra el precio vigente en cada movimiento
 6. Actualiza el `stock_actual` del producto
+
+**Mermas** usan selección manual de lote porque corresponden a una baja específica de un lote vencido o dañado identificado físicamente, no a una salida comercial.
