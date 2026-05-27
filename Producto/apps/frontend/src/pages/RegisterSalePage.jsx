@@ -7,29 +7,44 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
-const MOTIVOS = ['VENTA', 'TRASLADO', 'MERMA', 'AJUSTE']
+const MOTIVOS = [
+  {
+    valor:       'VENTA',
+    label:       'Venta',
+    descripcion: 'Se vendió el producto a un cliente.',
+    conPrecio:   true,
+  },
+  {
+    valor:       'AJUSTE',
+    label:       'Ajuste',
+    descripcion: 'El conteo físico tiene menos unidades de las que dice el sistema. Solo descuenta unidades, no genera monto. Si encontró unidades sin registrar, use "Registrar Entrada".',
+    conPrecio:   false,
+  },
+  {
+    valor:       'MERMA',
+    label:       'Merma',
+    descripcion: 'Producto vencido o dañado que debe darse de baja. Deberá seleccionar el lote afectado.',
+    conPrecio:   true,
+  },
+]
 
 export default function RegisterSalePage() {
-  const [busqueda, setBusqueda] = useState('')
-  const [producto, setProducto] = useState(null)
-  const [lotes,    setLotes]    = useState([])
+  const [busqueda,         setBusqueda]         = useState('')
+  const [producto,         setProducto]         = useState(null)
+  const [lotes,            setLotes]            = useState([])
   const [loteSeleccionado, setLoteSeleccionado] = useState(null)
-  const [cantidad, setCantidad] = useState('')
-  const [motivo,   setMotivo]   = useState('VENTA')
-  const [loading,  setLoading]  = useState(false)
+  const [cantidad,         setCantidad]         = useState('')
+  const [motivo,           setMotivo]           = useState('VENTA')
+  const [loading,          setLoading]          = useState(false)
   const barcodeRef = useRef(null)
   const navigate   = useNavigate()
   const [params]   = useSearchParams()
 
-  // Si viene desde Alertas con producto_id y lote_id precargados
   useEffect(() => {
-    const producto_id = params.get('producto_id')
-    const lote_id     = params.get('lote_id')
+    const producto_id  = params.get('producto_id')
+    const lote_id      = params.get('lote_id')
     const motivo_param = params.get('motivo')
-
-    if (producto_id) {
-      cargarProductoPorId(producto_id, lote_id, motivo_param)
-    }
+    if (producto_id) cargarProductoPorId(producto_id, lote_id, motivo_param)
   }, [])
 
   async function cargarProductoPorId(id, lote_id, motivo_param) {
@@ -72,22 +87,21 @@ export default function RegisterSalePage() {
     if (e.key === 'Enter') { e.preventDefault(); buscarProducto(busqueda) }
   }
 
-  const esMerma   = motivo === 'MERMA'
-  const precio    = precioVigente(producto)
-  const conDesc   = tieneDescuento(producto)
-  const subtotal  = precio * (Number(cantidad) || 0)
-  const nuevoStock = () => !producto || !cantidad ? (producto?.stock_actual ?? 0) : Math.max(0, producto.stock_actual - Number(cantidad))
+  const motivoActual = MOTIVOS.find(m => m.valor === motivo)
+  const esMerma      = motivo === 'MERMA'
+  const esAjuste     = motivo === 'AJUSTE'
+  const precio       = precioVigente(producto)
+  const conDesc      = tieneDescuento(producto)
+  const subtotal     = precio * (Number(cantidad) || 0)
+  const nuevoStock   = () => !producto || !cantidad
+    ? (producto?.stock_actual ?? 0)
+    : Math.max(0, producto.stock_actual - Number(cantidad))
 
   async function handleRegistrar() {
     if (!producto)                               { toast.error('Selecciona un producto'); return }
     if (!cantidad || Number(cantidad) <= 0)       { toast.error('Ingresa una cantidad válida'); return }
     if (Number(cantidad) > producto.stock_actual) { toast.error('Stock insuficiente'); return }
-
-    // Merma requiere lote específico
-    if (esMerma && !loteSeleccionado) {
-      toast.error('Para MERMA debes seleccionar el lote afectado')
-      return
-    }
+    if (esMerma && !loteSeleccionado)            { toast.error('Para Merma debes seleccionar el lote afectado'); return }
     if (esMerma && Number(cantidad) > loteSeleccionado.cantidad_actual) {
       toast.error(`Stock insuficiente en el lote. Disponible: ${loteSeleccionado.cantidad_actual}`)
       return
@@ -96,7 +110,6 @@ export default function RegisterSalePage() {
     setLoading(true)
     try {
       if (esMerma) {
-        // Endpoint específico de merma con lote seleccionado
         await api.post('/api/movimientos/merma', {
           producto_id: producto.id,
           lote_id:     loteSeleccionado.id,
@@ -104,7 +117,6 @@ export default function RegisterSalePage() {
           observacion: `Merma lote ${loteSeleccionado.numero_lote}`,
         })
       } else {
-        // Salida normal con FIFO automático
         await api.post('/api/movimientos/salida', {
           producto_id: producto.id,
           cantidad:    Number(cantidad),
@@ -151,11 +163,27 @@ export default function RegisterSalePage() {
                   </span>
                   <h3 className="text-3xl font-black mt-2">{producto.nombre}</h3>
                   <p className="text-on-surface-variant text-sm">SKU: <span className="font-mono">{producto.sku}</span></p>
-                  <div className="mt-3 flex items-center gap-3">
-                    {conDesc && <span className="line-through text-zinc-400 text-sm">{formatCLP(producto.precio_unitario)}</span>}
-                    <span className={`text-2xl font-black ${conDesc ? 'text-tertiary' : 'text-primary'}`}>{formatCLP(precio)}</span>
-                    {conDesc && <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black rounded-full">Precio con descuento</span>}
-                  </div>
+
+                  {/* Precio solo si el motivo lo requiere */}
+                  {motivoActual?.conPrecio && precio > 0 && (
+                    <div className="mt-3 flex items-center gap-3">
+                      {conDesc && <span className="line-through text-zinc-400 text-sm">{formatCLP(producto.precio_unitario)}</span>}
+                      <span className={`text-2xl font-black ${conDesc ? 'text-tertiary' : 'text-primary'}`}>{formatCLP(precio)}</span>
+                      {conDesc && (
+                        <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black rounded-full">
+                          Precio con descuento
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Ajuste: indicador sin precio */}
+                  {esAjuste && (
+                    <p className="mt-3 text-sm text-zinc-500 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px]">info</span>
+                      El ajuste no genera monto, solo corrige el stock
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-4xl font-black text-primary">{producto.stock_actual}</p>
@@ -180,24 +208,38 @@ export default function RegisterSalePage() {
                 <label className="text-xs font-bold uppercase text-on-surface-variant mb-3 block">Motivo</label>
                 <div className="flex gap-2">
                   {MOTIVOS.map(m => (
-                    <button key={m} type="button" onClick={() => { setMotivo(m); setLoteSeleccionado(null) }}
+                    <button key={m.valor} type="button"
+                      onClick={() => { setMotivo(m.valor); setLoteSeleccionado(null) }}
                       className={`flex-grow py-3 font-bold rounded-lg border-2 text-sm transition-all ${
-                        motivo === m
-                          ? m === 'MERMA' ? 'bg-error/10 border-error text-error' : 'bg-primary/10 border-primary text-primary'
+                        motivo === m.valor
+                          ? m.valor === 'MERMA'
+                            ? 'bg-error/10 border-error text-error'
+                            : m.valor === 'AJUSTE'
+                            ? 'bg-zinc-200 border-zinc-400 text-zinc-700'
+                            : 'bg-primary/10 border-primary text-primary'
                           : 'bg-zinc-100 border-transparent text-zinc-500 hover:border-zinc-300'
                       }`}>
-                      {m}
+                      {m.label}
                     </button>
                   ))}
                 </div>
+                {motivoActual && (
+                  <div className={`mt-3 p-3 rounded-lg text-sm flex items-start gap-2 ${
+                    esMerma  ? 'bg-error/5 text-error' :
+                    esAjuste ? 'bg-zinc-50 text-zinc-600' :
+                    'bg-secondary/5 text-secondary'
+                  }`}>
+                    <span className="material-symbols-outlined text-[18px] mt-0.5 shrink-0">info</span>
+                    <span>{motivoActual.descripcion}</span>
+                  </div>
+                )}
               </div>
 
               {/* Selección de lote — solo para MERMA */}
               {esMerma && (
                 <div>
-                  <label className="text-xs font-bold uppercase text-on-surface-variant mb-3 block flex items-center gap-2">
-                    <span className="material-symbols-outlined text-error text-[16px]">warning</span>
-                    Seleccionar Lote Afectado (requerido para MERMA)
+                  <label className="text-xs font-bold uppercase text-on-surface-variant mb-3 block">
+                    Seleccionar Lote Afectado
                   </label>
                   {lotes.length === 0 ? (
                     <p className="text-sm text-on-surface-variant bg-zinc-50 p-4 rounded-lg">Sin lotes activos disponibles</p>
@@ -228,11 +270,6 @@ export default function RegisterSalePage() {
                       ))}
                     </div>
                   )}
-                  {!esMerma && (
-                    <p className="text-xs text-on-surface-variant mt-2">
-                      Para otros motivos el lote se selecciona automáticamente (FIFO)
-                    </p>
-                  )}
                 </div>
               )}
 
@@ -258,18 +295,25 @@ export default function RegisterSalePage() {
                 )}
               </div>
 
-              {/* Resumen */}
-              {cantidad && precio > 0 && (
+              {/* Resumen económico — solo si el motivo tiene precio */}
+              {motivoActual?.conPrecio && cantidad && precio > 0 && (
                 <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
-                  <h4 className="font-bold text-sm mb-3 text-on-surface-variant uppercase tracking-wide">Resumen</h4>
                   <div className="flex items-center justify-between">
-                    <div className="text-center"><p className="text-xs text-on-surface-variant mb-1">Precio vigente</p><p className="font-bold">{formatCLP(precio)}</p></div>
+                    <div className="text-center">
+                      <p className="text-xs text-on-surface-variant mb-1">Precio unitario</p>
+                      <p className="font-bold">{formatCLP(precio)}</p>
+                    </div>
                     <span className="text-zinc-400 font-bold text-xl">×</span>
-                    <div className="text-center"><p className="text-xs text-on-surface-variant mb-1">Cantidad</p><p className="font-bold">{cantidad}</p></div>
+                    <div className="text-center">
+                      <p className="text-xs text-on-surface-variant mb-1">Cantidad</p>
+                      <p className="font-bold">{cantidad}</p>
+                    </div>
                     <span className="text-zinc-400 font-bold text-xl">=</span>
-                    <div className="text-center bg-primary/5 rounded-lg px-6 py-3">
+                    <div className={`text-center rounded-lg px-6 py-3 ${esMerma ? 'bg-error/5' : 'bg-primary/5'}`}>
                       <p className="text-xs text-on-surface-variant mb-1">Total</p>
-                      <p className="font-black text-2xl text-primary">{formatCLP(subtotal)}</p>
+                      <p className={`font-black text-2xl ${esMerma ? 'text-error' : 'text-primary'}`}>
+                        {esMerma ? '-' : ''}{formatCLP(subtotal)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -296,24 +340,35 @@ export default function RegisterSalePage() {
                   <span className="font-mono font-bold text-xs">{loteSeleccionado.numero_lote}</span>
                 </div>
               )}
-              <div className="flex justify-between border-b border-white/10 pb-3 text-error">
-                <span className="text-sm">{motivo}</span>
+              <div className={`flex justify-between border-b border-white/10 pb-3 ${esMerma ? 'text-error' : 'text-zinc-300'}`}>
+                <span className="text-sm">{motivoActual?.label || motivo}</span>
                 <span className="font-bold">-{cantidad || 0}</span>
               </div>
               <div className="flex justify-between border-b border-white/10 pb-3">
                 <span className="text-zinc-400 text-sm">Nuevo Stock</span>
                 <span className="font-bold text-secondary-fixed">{producto ? nuevoStock() : '—'}</span>
               </div>
-              {cantidad && precio > 0 && (
+              {/* Total solo si el motivo genera precio */}
+              {motivoActual?.conPrecio && cantidad && precio > 0 && (
                 <div className="flex justify-between pt-2">
                   <span className="text-zinc-300 font-bold">TOTAL</span>
-                  <span className={`text-2xl font-black ${conDesc ? 'text-yellow-300' : 'text-secondary-fixed'}`}>{formatCLP(subtotal)}</span>
+                  <span className={`text-2xl font-black ${esMerma ? 'text-error' : conDesc ? 'text-yellow-300' : 'text-secondary-fixed'}`}>
+                    {esMerma ? '-' : ''}{formatCLP(subtotal)}
+                  </span>
+                </div>
+              )}
+              {esAjuste && cantidad && (
+                <div className="pt-2 text-center">
+                  <span className="text-xs text-zinc-500">Solo corrige el stock, sin monto</span>
                 </div>
               )}
             </div>
-            <button onClick={handleRegistrar} disabled={loading || !producto || (esMerma && !loteSeleccionado)}
-              className={`w-full mt-8 py-4 font-bold rounded-xl shadow-lg hover:opacity-90 disabled:opacity-50 transition-all text-white ${esMerma ? 'bg-error' : 'bg-primary'}`}>
-              {loading ? 'Registrando...' : esMerma ? 'Registrar Merma' : 'Registrar Salida'}
+            <button onClick={handleRegistrar}
+              disabled={loading || !producto || (esMerma && !loteSeleccionado)}
+              className={`w-full mt-8 py-4 font-bold rounded-xl shadow-lg hover:opacity-90 disabled:opacity-50 transition-all text-white ${
+                esMerma ? 'bg-error' : esAjuste ? 'bg-zinc-600' : 'bg-primary'
+              }`}>
+              {loading ? 'Registrando...' : esMerma ? 'Registrar Merma' : `Registrar ${motivoActual?.label || motivo}`}
             </button>
             {esMerma && !loteSeleccionado && (
               <p className="text-center text-xs text-zinc-400 mt-2">Selecciona el lote afectado</p>

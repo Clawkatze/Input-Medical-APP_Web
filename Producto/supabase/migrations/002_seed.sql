@@ -1,11 +1,8 @@
 -- =============================================================================
--- Input Medical - Datos de demostración
--- Migration 002: Seed de productos y lotes de ejemplo
--- NOTA: El usuario Super Admin se crea automáticamente al arrancar el backend
--- usando las variables SUPERADMIN_EMAIL y SUPERADMIN_PASSWORD del .env
+-- Input Medical - Migration 002: Seed de datos de demo
+-- NOTA: El Super Admin se crea automáticamente al arrancar el backend
 -- =============================================================================
 
--- ─── Categorías ───────────────────────────────────────────────────────────────
 INSERT INTO categorias (nombre, descripcion) VALUES
   ('INSUMOS',         'Materiales desechables de uso médico'),
   ('EQUIPOS MÉDICOS', 'Dispositivos y equipamiento reutilizable'),
@@ -13,7 +10,6 @@ INSERT INTO categorias (nombre, descripcion) VALUES
   ('MOBILIARIO',      'Mobiliario clínico y hospitalario')
 ON CONFLICT (nombre) DO NOTHING;
 
--- ─── Productos de demo ────────────────────────────────────────────────────────
 INSERT INTO productos (codigo_barras, sku, nombre, descripcion, categoria_id, stock_actual, stock_minimo, unidad_medida, tiene_vencimiento)
 SELECT '780123456789','MED-CAT-18G-001','Catéter Intravenoso 18G','Catéter periférico desechable calibre 18G.',c.id,1250,200,'unidad',TRUE
 FROM categorias c WHERE c.nombre = 'INSUMOS' ON CONFLICT (sku) DO NOTHING;
@@ -34,7 +30,6 @@ INSERT INTO productos (codigo_barras, sku, nombre, descripcion, categoria_id, st
 SELECT '780123456793','MED-SUT-CUR-45','Sutura Mecánica Curva 45mm','Sutura mecánica para cirugía.',c.id,8,20,'unidad',TRUE
 FROM categorias c WHERE c.nombre = 'INSUMOS' ON CONFLICT (sku) DO NOTHING;
 
--- ─── Lotes de demo ────────────────────────────────────────────────────────────
 INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial, cantidad_actual)
 SELECT p.id,'LOT-240101-A','2026-12-31',1250,1250 FROM productos p WHERE p.sku='MED-CAT-18G-001'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
@@ -59,7 +54,6 @@ INSERT INTO lotes (producto_id, numero_lote, fecha_vencimiento, cantidad_inicial
 SELECT p.id,'LOT-240101-A','2026-12-31',3200,3200 FROM productos p WHERE p.sku='MED-JER-5ML-001'
 ON CONFLICT (producto_id, numero_lote) DO NOTHING;
 
--- ─── Movimientos de demo ──────────────────────────────────────────────────────
 INSERT INTO movimientos (producto_id, lote_id, tipo, cantidad, motivo, observacion, usuario_email)
 SELECT p.id,l.id,'ENTRADA',1250,'COMPRA','Ingreso inicial','admin@inputmedical.cl'
 FROM productos p JOIN lotes l ON l.producto_id=p.id AND l.numero_lote='LOT-240101-A'
