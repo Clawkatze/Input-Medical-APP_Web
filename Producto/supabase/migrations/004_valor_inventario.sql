@@ -1,9 +1,7 @@
 -- =============================================================================
--- Input Medical - Migration 004: Valor Total del Inventario
--- Ejecutar DESPUÉS de 003_precios.sql
+-- Input Medical - Migration 004: Vista valor total del inventario
 -- =============================================================================
 
--- ─── Vista: valor total por producto y gran total ─────────────────────────────
 CREATE OR REPLACE VIEW v_valor_inventario AS
 SELECT
   p.id,
@@ -20,10 +18,8 @@ LEFT JOIN categorias c ON c.id = p.categoria_id
 WHERE p.activo = true
 ORDER BY p.nombre;
 
--- ─── Función: retorna el gran total del inventario ────────────────────────────
 CREATE OR REPLACE FUNCTION fn_gran_total_inventario()
 RETURNS NUMERIC LANGUAGE SQL AS $$
   SELECT COALESCE(SUM(stock_actual * precio_unitario), 0)
-  FROM productos
-  WHERE activo = true;
+  FROM productos WHERE activo = true;
 $$;
