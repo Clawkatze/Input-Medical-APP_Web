@@ -48,7 +48,7 @@ function estiloBase(cell, bg) {
 
 function estiloNum(cell, bg) {
   estiloBase(cell, bg)
-  cell.numFmt    = '#.##0'
+  cell.numFmt    = '#,##0'
   cell.alignment = { horizontal: 'right', vertical: 'middle' }
 }
 
@@ -98,7 +98,7 @@ async function reporteStock(req, res, next) {
       cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.TOTAL_BG } }
       cell.border = borde()
       if (col === 9) cell.alignment = { horizontal: 'right', vertical: 'middle' }
-      if (col === 10) { cell.numFmt = '#.##0'; cell.alignment = { horizontal: 'right', vertical: 'middle' } }
+      if (col === 10) { cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right', vertical: 'middle' } }
     })
 
     const buf = await wb.xlsx.writeBuffer()
