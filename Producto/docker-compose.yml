@@ -30,6 +30,7 @@ services:
       - ./supabase/migrations/006_roles.sql:/docker-entrypoint-initdb.d/06_roles.sql:ro
       - ./supabase/migrations/007_entrada_precio_merma.sql:/docker-entrypoint-initdb.d/07_entrada_precio_merma.sql:ro
       - ./supabase/migrations/008_ajuste_descuento.sql:/docker-entrypoint-initdb.d/08_ajuste_descuento.sql:ro
+      - ./supabase/migrations/009_eliminacion_permanente.sql:/docker-entrypoint-initdb.d/09_eliminacion_permanente.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s

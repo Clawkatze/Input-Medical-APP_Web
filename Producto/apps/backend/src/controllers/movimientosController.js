@@ -1,6 +1,5 @@
 const pool = require('../config/db')
 
-// POST /api/movimientos/entrada
 async function registrarEntrada(req, res, next) {
   const { producto_id, numero_lote, fecha_vencimiento, cantidad, observacion } = req.body
   if (!producto_id || !numero_lote || !cantidad) {
@@ -16,7 +15,6 @@ async function registrarEntrada(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// POST /api/movimientos/salida
 async function registrarSalida(req, res, next) {
   const { producto_id, cantidad, motivo, observacion } = req.body
   if (!producto_id || !cantidad) {
@@ -36,7 +34,6 @@ async function registrarSalida(req, res, next) {
   }
 }
 
-// POST /api/movimientos/merma
 async function registrarMerma(req, res, next) {
   const { producto_id, lote_id, cantidad, observacion } = req.body
   if (!producto_id || !lote_id || !cantidad) {
@@ -56,7 +53,6 @@ async function registrarMerma(req, res, next) {
   }
 }
 
-// GET /api/movimientos/lotes/:producto_id
 async function getLotesPorProducto(req, res, next) {
   try {
     const { rows } = await pool.query(
@@ -70,7 +66,6 @@ async function getLotesPorProducto(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// GET /api/movimientos
 async function getMovimientos(req, res, next) {
   const { producto_id, limit = 50 } = req.query
   try {
@@ -87,7 +82,6 @@ async function getMovimientos(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// GET /api/movimientos/alertas
 async function getAlertas(req, res, next) {
   try {
     const { rows } = await pool.query(`
@@ -107,8 +101,6 @@ async function getAlertas(req, res, next) {
   } catch (err) { next(err) }
 }
 
-// GET /api/movimientos/dashboard-stats
-// Incluye ventas, pérdidas por merma y descuentos aplicados del día
 async function getDashboardStats(req, res, next) {
   try {
     const [total, critico, alertasVenc, movHoy, ventasHoy, mermasHoy, descuentosHoy, valorInventario] = await Promise.all([
@@ -116,28 +108,9 @@ async function getDashboardStats(req, res, next) {
       pool.query(`SELECT COUNT(*) FROM productos WHERE activo = true AND stock_actual <= stock_minimo`),
       pool.query(`SELECT COUNT(*) FROM v_alertas WHERE estado_vencimiento IN ('VENCIDO','PROXIMO')`),
       pool.query(`SELECT COUNT(*) FROM movimientos WHERE created_at >= CURRENT_DATE`),
-      // Ventas del día: salidas con motivo VENTA, TRASLADO o AJUSTE
-      pool.query(`
-        SELECT COALESCE(SUM(total),0) AS total_ventas
-        FROM movimientos
-        WHERE tipo='SALIDA' AND motivo IN ('VENTA','TRASLADO','AJUSTE')
-        AND created_at >= CURRENT_DATE
-      `),
-      // Pérdidas del día: solo mermas
-      pool.query(`
-        SELECT COALESCE(SUM(total),0) AS total_mermas
-        FROM movimientos
-        WHERE tipo='SALIDA' AND motivo='MERMA'
-        AND created_at >= CURRENT_DATE
-      `),
-      // Descuentos aplicados hoy: diferencia entre precio normal y precio vigente en ventas
-      pool.query(`
-        SELECT COALESCE(SUM(descuento_monto),0) AS total_descuentos
-        FROM movimientos
-        WHERE tipo='SALIDA' AND motivo='VENTA'
-        AND descuento_monto > 0
-        AND created_at >= CURRENT_DATE
-      `),
+      pool.query(`SELECT COALESCE(SUM(total),0) AS total_ventas FROM movimientos WHERE tipo='SALIDA' AND motivo IN ('VENTA','TRASLADO') AND created_at >= CURRENT_DATE`),
+      pool.query(`SELECT COALESCE(SUM(total),0) AS total_mermas FROM movimientos WHERE tipo='SALIDA' AND motivo='MERMA' AND created_at >= CURRENT_DATE`),
+      pool.query(`SELECT COALESCE(SUM(descuento_monto),0) AS total_descuentos FROM movimientos WHERE tipo='SALIDA' AND motivo='VENTA' AND descuento_monto > 0 AND created_at >= CURRENT_DATE`),
       pool.query(`SELECT fn_gran_total_inventario() AS gran_total`),
     ])
     res.json({
@@ -154,10 +127,35 @@ async function getDashboardStats(req, res, next) {
 }
 
 // GET /api/movimientos/valor-inventario
+// Soporta ?mostrar_inactivos=true para incluir productos desactivados
 async function getValorInventario(req, res, next) {
   try {
-    const { rows } = await pool.query(`SELECT * FROM v_valor_inventario`)
-    const granTotal = rows.reduce((acc, r) => acc + Number(r.valor_total_producto || 0), 0)
+    const mostrarInactivos = req.query.mostrar_inactivos === 'true'
+
+    let query = `
+      SELECT
+        p.id, p.sku, p.codigo_barras, p.nombre, p.activo,
+        c.nombre AS categoria_nombre,
+        p.stock_actual, p.stock_minimo, p.unidad_medida,
+        p.precio_unitario, p.precio_descuento,
+        COALESCE(p.precio_descuento, p.precio_unitario) AS precio_vigente,
+        p.stock_actual * COALESCE(p.precio_descuento, p.precio_unitario) AS valor_total_producto
+      FROM productos p
+      LEFT JOIN categorias c ON c.id = p.categoria_id
+    `
+    if (!mostrarInactivos) {
+      query += ` WHERE p.activo = true AND p.eliminado_at IS NULL`
+    } else {
+      query += ` WHERE p.eliminado_at IS NULL`
+    }
+    query += ` ORDER BY p.activo DESC, p.nombre ASC`
+
+    const { rows } = await pool.query(query)
+    // Gran total solo cuenta productos activos
+    const granTotal = rows
+      .filter(r => r.activo)
+      .reduce((acc, r) => acc + Number(r.valor_total_producto || 0), 0)
+
     res.json({ productos: rows, gran_total: granTotal })
   } catch (err) { next(err) }
 }
