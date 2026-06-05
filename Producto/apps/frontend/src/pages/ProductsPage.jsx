@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../services/api'
 import { PageLayout } from '../components/Layout'
 import { formatCLP, tieneDescuento } from '../services/precio'
@@ -11,11 +11,17 @@ export default function ProductsPage() {
   const [granTotal,        setGranTotal]        = useState(0)
   const [busqueda,         setBusqueda]         = useState('')
   const [mostrarInactivos, setMostrarInactivos] = useState(false)
+  const [filtroCritico,    setFiltroCritico]    = useState(false)
   const [loading,          setLoading]          = useState(true)
-  const navigate   = useNavigate()
+  const navigate    = useNavigate()
   const { isAdmin } = useAuth()
+  const [searchParams] = useSearchParams()
 
-  useEffect(() => { fetchProductos() }, [mostrarInactivos])
+  useEffect(() => {
+    // Si viene desde el dashboard con ?filtro=critico, activar filtro
+    if (searchParams.get('filtro') === 'critico') setFiltroCritico(true)
+    fetchProductos()
+  }, [mostrarInactivos])
 
   async function fetchProductos() {
     setLoading(true)
@@ -64,16 +70,17 @@ export default function ProductsPage() {
     }
   }
 
-  const filtrados = productos.filter(p =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    p.sku.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (p.codigo_barras || '').includes(busqueda)
-  )
+  // Filtros acumulativos
+  const filtrados = productos.filter(p => {
+    const matchBusqueda = !busqueda ||
+      p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.sku.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (p.codigo_barras || '').includes(busqueda)
+    const matchCritico = !filtroCritico || (p.stock_actual <= p.stock_minimo && p.activo)
+    return matchBusqueda && matchCritico
+  })
 
-  const totalFiltrado = filtrados
-    .filter(p => p.activo)
-    .reduce((acc, p) => acc + Number(p.valor_total_producto || 0), 0)
-
+  const totalFiltrado = filtrados.filter(p => p.activo).reduce((acc, p) => acc + Number(p.valor_total_producto || 0), 0)
   const inactivosCount = productos.filter(p => !p.activo).length
 
   const estadoColor = (p) => {
@@ -101,9 +108,18 @@ export default function ProductsPage() {
               className="w-full h-14 pl-12 pr-4 bg-surface-container-high border-none rounded-xl outline-none focus:ring-2 focus:ring-primary"
               placeholder="Buscar por nombre, SKU o código de barras..." />
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setMostrarInactivos(!mostrarInactivos)}
+          <div className="flex gap-3 flex-wrap">
+            {/* Filtro stock crítico */}
+            <button onClick={() => setFiltroCritico(!filtroCritico)}
+              className={`h-14 px-5 rounded-xl font-bold flex items-center gap-2 border-2 transition-all ${
+                filtroCritico
+                  ? 'bg-error/10 border-error text-error'
+                  : 'bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300'
+              }`}>
+              <span className="material-symbols-outlined text-[20px]">trending_down</span>
+              <span className="text-sm">{filtroCritico ? 'Ver todos' : 'Solo críticos'}</span>
+            </button>
+            <button onClick={() => setMostrarInactivos(!mostrarInactivos)}
               className={`h-14 px-5 rounded-xl font-bold flex items-center gap-2 border-2 transition-all ${
                 mostrarInactivos
                   ? 'bg-zinc-200 border-zinc-400 text-zinc-700'
@@ -126,24 +142,30 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        {/* Aviso filtro activo */}
+        {filtroCritico && (
+          <div className="bg-error/5 border border-error/20 p-3 rounded-xl flex items-center gap-3 text-sm text-error">
+            <span className="material-symbols-outlined text-[18px]">filter_alt</span>
+            Mostrando solo productos con stock crítico o sin stock.
+            <button onClick={() => setFiltroCritico(false)} className="ml-auto font-bold hover:underline">Quitar filtro</button>
+          </div>
+        )}
+
         {/* Banner valor total */}
         <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-5 rounded-xl border border-primary/20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
             <div>
               <p className="font-bold text-on-surface">Valor Total del Inventario</p>
-              <p className="text-xs text-on-surface-variant">
-                Solo productos activos · precio vigente
-                {busqueda && ` · Mostrando ${filtrados.filter(p=>p.activo).length} de ${productos.filter(p=>p.activo).length}`}
-              </p>
+              <p className="text-xs text-on-surface-variant">Solo productos activos · precio vigente</p>
             </div>
           </div>
           <p className="text-3xl font-black text-primary">
-            {loading ? '—' : formatCLP(busqueda ? totalFiltrado : granTotal)}
+            {loading ? '—' : formatCLP(busqueda || filtroCritico ? totalFiltrado : granTotal)}
           </p>
         </div>
 
-        {/* Aviso cuando hay inactivos visibles */}
+        {/* Aviso inactivos */}
         {mostrarInactivos && inactivosCount > 0 && (
           <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl flex items-center gap-3 text-sm text-zinc-600">
             <span className="material-symbols-outlined text-zinc-400">info</span>
@@ -243,17 +265,16 @@ export default function ProductsPage() {
                   </tr>
                 ))}
               </tbody>
-
               {!loading && filtrados.filter(p => p.activo).length > 0 && (
                 <tfoot>
                   <tr className="bg-zinc-50 border-t-2 border-zinc-200">
                     <td colSpan={6} className="px-6 py-4 text-right font-black text-sm text-on-surface-variant uppercase tracking-wider">
-                      {busqueda
+                      {busqueda || filtroCritico
                         ? `Total filtrado (${filtrados.filter(p=>p.activo).length} activos)`
                         : `Gran Total (${productos.filter(p=>p.activo).length} productos activos)`}
                     </td>
                     <td className="px-6 py-4 font-black text-xl text-primary">
-                      {formatCLP(busqueda ? totalFiltrado : granTotal)}
+                      {formatCLP(busqueda || filtroCritico ? totalFiltrado : granTotal)}
                     </td>
                     <td colSpan={isAdmin ? 2 : 1} />
                   </tr>

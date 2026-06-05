@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import api from '../services/api'
@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [movimientos, setMovimientos] = useState([])
   const [alertas,     setAlertas]     = useState([])
   const [loading,     setLoading]     = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => { fetchData() }, [])
 
@@ -41,43 +42,36 @@ export default function DashboardPage() {
       const res = await api.get('/api/reportes/movimientos', { responseType: 'blob' })
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a')
-      a.href = url; a.download = 'movimientos.csv'; a.click()
+      a.href = url; a.download = 'movimientos.xlsx'; a.click()
       URL.revokeObjectURL(url)
     } catch { toast.error('Error al exportar') }
   }
 
-  const STAT_CARDS = [
-    { label: 'Total Productos',   val: stats.total_productos,  sub: 'productos activos',  color: 'text-primary',   icon: 'inventory' },
-    { label: 'Stock Crítico',     val: stats.stock_critico,    sub: 'Acción requerida',   color: 'text-error',     icon: 'trending_down' },
-    { label: 'Próximos a Vencer', val: stats.proximos_vencer,  sub: 'Próximos 30 días',  color: 'text-tertiary',  icon: 'schedule' },
-    { label: 'Movimientos Hoy',   val: stats.movimientos_hoy,  sub: 'Transacciones',      color: 'text-secondary', icon: 'sync_alt' },
-  ]
-
   const getBadge = (row) => {
-    if (row.tipo === 'ENTRADA')    return { label: 'ENTRADA',  cls: 'bg-secondary-container text-on-secondary-container' }
-    if (row.motivo === 'MERMA')    return { label: 'MERMA',    cls: 'bg-error text-white' }
-    if (row.motivo === 'TRASLADO') return { label: 'TRASLADO', cls: 'bg-zinc-200 text-zinc-700' }
-    if (row.motivo === 'AJUSTE')   return { label: 'AJUSTE',   cls: 'bg-zinc-200 text-zinc-700' }
+    if (row.tipo === 'ELIMINACION') return { label: 'ELIMINADO', cls: 'bg-purple-100 text-purple-700' }
+    if (row.tipo === 'ENTRADA')     return { label: 'ENTRADA',   cls: 'bg-secondary-container text-on-secondary-container' }
+    if (row.motivo === 'MERMA')     return { label: 'MERMA',     cls: 'bg-error text-white' }
+    if (row.motivo === 'AJUSTE')    return { label: 'AJUSTE',    cls: 'bg-orange-100 text-orange-700' }
     return { label: 'VENTA', cls: 'bg-primary/10 text-primary' }
   }
 
   const getPrecio = (row) => {
-    if (!row.precio_unitario || row.precio_unitario <= 0) return null
+    if (row.tipo === 'ELIMINACION' || !row.precio_unitario || row.precio_unitario <= 0) return null
     if (row.tipo === 'ENTRADA') return { valor: formatCLP(row.precio_unitario), color: 'text-secondary' }
     if (row.motivo === 'MERMA') return { valor: formatCLP(row.precio_unitario), color: 'text-error' }
     return { valor: formatCLP(row.precio_unitario), color: 'text-primary' }
   }
 
   const getTotal = (row) => {
+    if (row.tipo === 'ELIMINACION') return null
     if (!row.total || row.total <= 0) return null
     if (row.motivo === 'MERMA') return { valor: `-${formatCLP(row.total)}`, color: 'text-error font-black' }
-    if (row.tipo === 'ENTRADA') return { valor: formatCLP(row.total),       color: 'text-secondary font-bold' }
+    if (row.tipo === 'ENTRADA') return { valor: formatCLP(row.total), color: 'text-secondary font-bold' }
     return { valor: formatCLP(row.total), color: 'text-primary font-bold' }
   }
 
   return (
     <PageLayout title="Panel de Control">
-
       {alertas.length > 0 && (
         <div className="mb-6 bg-tertiary-fixed text-on-tertiary-fixed p-4 rounded-xl flex items-center justify-between border-l-4 border-tertiary shadow-sm">
           <div className="flex items-center gap-3">
@@ -88,18 +82,55 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 4 stat cards */}
+      {/* 4 stat cards — Stock Crítico y Próximo a Vencer son clickeables */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
-        {STAT_CARDS.map((item, idx) => (
-          <div key={idx} className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15 hover:bg-surface-bright transition-all">
-            <p className="text-on-surface-variant font-semibold text-sm">{item.label}</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className={`text-4xl font-bold ${item.color}`}>{loading ? '—' : item.val}</span>
-              <span className="material-symbols-outlined text-sm text-on-surface-variant">{item.icon}</span>
-            </div>
-            <p className="text-xs text-on-surface-variant mt-4">{item.sub}</p>
+        {/* Total Productos */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15">
+          <p className="text-on-surface-variant font-semibold text-sm">Total Productos</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl font-bold text-primary">{loading ? '—' : stats.total_productos}</span>
+            <span className="material-symbols-outlined text-sm text-on-surface-variant">inventory</span>
           </div>
-        ))}
+          <p className="text-xs text-on-surface-variant mt-4">productos activos</p>
+        </div>
+
+        {/* Stock Crítico — link a /products con filtro */}
+        <button onClick={() => navigate('/products?filtro=critico')}
+          className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15 text-left hover:bg-error/5 hover:border-error/20 transition-all group">
+          <p className="text-on-surface-variant font-semibold text-sm group-hover:text-error transition-colors">Stock Crítico</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl font-bold text-error">{loading ? '—' : stats.stock_critico}</span>
+            <span className="material-symbols-outlined text-sm text-error">trending_down</span>
+          </div>
+          <p className="text-xs text-error/70 mt-4 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+            Ver productos críticos
+          </p>
+        </button>
+
+        {/* Próximos a Vencer — link a /alerts */}
+        <button onClick={() => navigate('/alerts?filtro=vencimiento')}
+          className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15 text-left hover:bg-tertiary/5 hover:border-tertiary/20 transition-all group">
+          <p className="text-on-surface-variant font-semibold text-sm group-hover:text-tertiary transition-colors">Próximos a Vencer</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl font-bold text-tertiary">{loading ? '—' : stats.proximos_vencer}</span>
+            <span className="material-symbols-outlined text-sm text-tertiary">schedule</span>
+          </div>
+          <p className="text-xs text-tertiary/70 mt-4 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+            Ver alertas de vencimiento
+          </p>
+        </button>
+
+        {/* Movimientos Hoy */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15">
+          <p className="text-on-surface-variant font-semibold text-sm">Movimientos Hoy</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl font-bold text-secondary">{loading ? '—' : stats.movimientos_hoy}</span>
+            <span className="material-symbols-outlined text-sm text-on-surface-variant">sync_alt</span>
+          </div>
+          <p className="text-xs text-on-surface-variant mt-4">Transacciones</p>
+        </div>
       </div>
 
       {/* 4 banners económicos */}
@@ -158,7 +189,7 @@ export default function DashboardPage() {
         <div className="p-6 flex items-center justify-between">
           <h2 className="text-xl font-bold">Movimientos Recientes</h2>
           <button onClick={handleExportCSV} className="px-4 py-2 text-sm font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors">
-            Descargar CSV
+            Descargar Excel
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -183,25 +214,26 @@ export default function DashboardPage() {
                 const badge  = getBadge(row)
                 const precio = getPrecio(row)
                 const total  = getTotal(row)
+                const esEliminacion = row.tipo === 'ELIMINACION'
                 return (
-                  <tr key={row.id} className="hover:bg-surface-container-low/50">
+                  <tr key={row.id} className={`hover:bg-surface-container-low/50 ${esEliminacion ? 'bg-purple-50/50' : ''}`}>
                     <td className="px-6 py-4">{format(new Date(row.created_at), 'dd/MM HH:mm', { locale: es })}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${badge.cls}`}>{badge.label}</span>
                     </td>
-                    <td className="px-6 py-4 font-medium">{row.producto_nombre}</td>
+                    <td className={`px-6 py-4 font-medium ${esEliminacion ? 'text-purple-600 line-through' : ''}`}>
+                      {row.producto_nombre}
+                    </td>
                     <td className="px-6 py-4 font-semibold">
-                      {row.tipo === 'ENTRADA' ? '+' : '-'}{row.cantidad}
+                      {esEliminacion ? '—' : `${row.tipo === 'ENTRADA' ? '+' : '-'}${row.cantidad}`}
                     </td>
                     <td className="px-6 py-4">
-                      {precio
-                        ? <span className={`font-medium ${precio.color}`}>{precio.valor}</span>
-                        : <span className="text-zinc-300">—</span>}
+                      {precio ? <span className={`font-medium ${precio.color}`}>{precio.valor}</span>
+                               : <span className="text-zinc-300">—</span>}
                     </td>
                     <td className="px-6 py-4">
-                      {total
-                        ? <span className={total.color}>{total.valor}</span>
-                        : <span className="text-zinc-300">—</span>}
+                      {total ? <span className={total.color}>{total.valor}</span>
+                              : <span className="text-zinc-300">—</span>}
                     </td>
                     <td className="px-6 py-4">{row.usuario_email || '—'}</td>
                   </tr>

@@ -31,22 +31,22 @@ export default function ProductHistoryPage() {
   if (!producto) return <PageLayout title="Historial"><p className="text-center py-20 text-error">Producto no encontrado</p></PageLayout>
 
   const getBadge = (m) => {
-    if (m.tipo === 'ENTRADA')    return { label: 'ENTRADA',  cls: 'bg-secondary-container text-on-secondary-container' }
-    if (m.motivo === 'MERMA')    return { label: 'MERMA',    cls: 'bg-error text-white' }
-    if (m.motivo === 'TRASLADO') return { label: 'TRASLADO', cls: 'bg-zinc-200 text-zinc-700' }
-    if (m.motivo === 'AJUSTE')   return { label: 'AJUSTE',   cls: 'bg-zinc-200 text-zinc-700' }
+    if (m.tipo === 'ELIMINACION')  return { label: 'ELIMINADO',  cls: 'bg-purple-100 text-purple-700' }
+    if (m.tipo === 'ENTRADA')      return { label: 'ENTRADA',    cls: 'bg-secondary-container text-on-secondary-container' }
+    if (m.motivo === 'MERMA')      return { label: 'MERMA',      cls: 'bg-error text-white' }
+    if (m.motivo === 'AJUSTE')     return { label: 'AJUSTE',     cls: 'bg-orange-100 text-orange-700' }
     return { label: 'VENTA', cls: 'bg-primary/10 text-primary' }
   }
 
   const getPrecio = (m) => {
-    if (!m.precio_unitario || m.precio_unitario <= 0) return null
+    if (m.tipo === 'ELIMINACION' || !m.precio_unitario || m.precio_unitario <= 0) return null
     if (m.tipo === 'ENTRADA') return { valor: formatCLP(m.precio_unitario), color: 'text-secondary' }
     if (m.motivo === 'MERMA') return { valor: formatCLP(m.precio_unitario), color: 'text-error' }
     return { valor: formatCLP(m.precio_unitario), color: 'text-primary' }
   }
 
   const getTotal = (m) => {
-    if (!m.total || m.total <= 0) return null
+    if (m.tipo === 'ELIMINACION' || !m.total || m.total <= 0) return null
     if (m.motivo === 'MERMA') return { valor: `-${formatCLP(m.total)}`, color: 'text-error font-black' }
     if (m.tipo === 'ENTRADA') return { valor: formatCLP(m.total),       color: 'text-secondary font-bold' }
     return { valor: formatCLP(m.total), color: 'text-primary font-bold' }
@@ -59,7 +59,6 @@ export default function ProductHistoryPage() {
           <span className="material-symbols-outlined">arrow_back</span> Volver a Productos
         </button>
 
-        {/* Encabezado */}
         <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-3xl font-black">{producto.nombre}</h2>
@@ -89,9 +88,11 @@ export default function ProductHistoryPage() {
         {/* Leyenda */}
         <div className="flex items-center gap-4 mb-4 text-xs text-on-surface-variant flex-wrap bg-zinc-50 p-3 rounded-lg">
           <span className="font-bold text-zinc-500">Leyenda:</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-secondary inline-block"></span> Entrada de stock</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-secondary inline-block"></span> Entrada</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-primary inline-block"></span> Venta</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-error inline-block"></span> Merma / pérdida</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-400 inline-block"></span> Ajuste</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-error inline-block"></span> Merma</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500 inline-block"></span> Eliminación</span>
         </div>
 
         {/* Kardex */}
@@ -120,8 +121,9 @@ export default function ProductHistoryPage() {
                   const badge  = getBadge(m)
                   const precio = getPrecio(m)
                   const total  = getTotal(m)
+                  const esEliminacion = m.tipo === 'ELIMINACION'
                   return (
-                    <tr key={m.id} className="hover:bg-zinc-50">
+                    <tr key={m.id} className={`hover:bg-zinc-50 ${esEliminacion ? 'bg-purple-50' : ''}`}>
                       <td className="px-6 py-4 font-bold whitespace-nowrap">
                         {format(new Date(m.created_at), 'dd MMM', { locale: es })}
                         <br /><span className="text-xs font-normal text-on-surface-variant">{format(new Date(m.created_at), 'HH:mm')}</span>
@@ -130,20 +132,26 @@ export default function ProductHistoryPage() {
                         <span className={`px-2 py-1 rounded text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
                       </td>
                       <td className="px-6 py-4 font-mono text-xs">{m.numero_lote || '—'}</td>
-                      <td className={`px-6 py-4 text-lg font-black ${m.tipo === 'ENTRADA' ? 'text-secondary' : m.motivo === 'MERMA' ? 'text-error' : 'text-primary'}`}>
-                        {m.tipo === 'ENTRADA' ? '+' : '-'}{m.cantidad}
+                      <td className={`px-6 py-4 text-lg font-black ${
+                        esEliminacion ? 'text-purple-500' :
+                        m.tipo === 'ENTRADA' ? 'text-secondary' :
+                        m.motivo === 'MERMA' ? 'text-error' : 'text-primary'
+                      }`}>
+                        {esEliminacion ? '—' : `${m.tipo === 'ENTRADA' ? '+' : '-'}${m.cantidad}`}
                       </td>
                       <td className="px-6 py-4">
-                        {precio
-                          ? <span className={`font-bold ${precio.color}`}>{precio.valor}</span>
-                          : <span className="text-zinc-300">—</span>}
+                        {precio ? <span className={`font-bold ${precio.color}`}>{precio.valor}</span>
+                                : <span className="text-zinc-300">—</span>}
                       </td>
                       <td className="px-6 py-4">
-                        {total
-                          ? <span className={total.color}>{total.valor}</span>
-                          : <span className="text-zinc-300">—</span>}
+                        {total ? <span className={total.color}>{total.valor}</span>
+                               : <span className="text-zinc-300">—</span>}
                       </td>
-                      <td className="px-6 py-4 text-on-surface-variant">{m.motivo || '—'}</td>
+                      <td className="px-6 py-4 text-on-surface-variant">
+                        {esEliminacion ? (
+                          <span className="text-purple-600 font-medium">Eliminación permanente</span>
+                        ) : m.motivo || '—'}
+                      </td>
                       <td className="px-6 py-4 text-on-surface-variant text-xs">{m.usuario_email || '—'}</td>
                     </tr>
                   )
