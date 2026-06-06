@@ -11,6 +11,11 @@ const FORM_INIT = {
   tiene_vencimiento: true, precio_unitario: '', precio_descuento: '',
 }
 
+// Normaliza input de precio: elimina todo lo que no sea dígito
+function normalizarPrecio(val) {
+  return val.replace(/[^0-9]/g, '')
+}
+
 export default function AddProductPage() {
   const [form,       setForm]       = useState(FORM_INIT)
   const [categorias, setCategorias] = useState([])
@@ -29,13 +34,9 @@ export default function AddProductPage() {
 
   async function fetchCategorias() {
     try {
-      const { data } = await api.get('/api/productos')
-      const cats = [...new Map(
-        data.filter(p => p.categoria_id)
-            .map(p => [p.categoria_id, { id: p.categoria_id, nombre: p.categoria_nombre }])
-      ).values()]
-      setCategorias(cats)
-    } catch {}
+      const { data } = await api.get('/api/productos/categorias')
+      setCategorias(data)
+    } catch { toast.error('Error al cargar categorías') }
   }
 
   async function loadProducto(id) {
@@ -44,13 +45,17 @@ export default function AddProductPage() {
       const { data } = await api.get(`/api/productos/${id}`)
       setForm(f => ({
         ...f, ...data,
-        precio_unitario:  data.precio_unitario  || '',
-        precio_descuento: data.precio_descuento || '',
+        precio_unitario:  data.precio_unitario  ? String(Math.round(data.precio_unitario))  : '',
+        precio_descuento: data.precio_descuento ? String(Math.round(data.precio_descuento)) : '',
       }))
     } catch { toast.error('Error al cargar producto') }
   }
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const setPrecio = (key, val) => {
+    set(key, normalizarPrecio(val))
+  }
 
   const handleBarcodeKeyDown = async (e) => {
     if (e.key !== 'Enter') return
@@ -60,7 +65,11 @@ export default function AddProductPage() {
       const { data } = await api.get(`/api/productos/barcode/${form.codigo_barras}`)
       toast.success('Producto encontrado')
       setEditId(data.id)
-      setForm(f => ({ ...f, ...data, precio_unitario: data.precio_unitario || '', precio_descuento: data.precio_descuento || '' }))
+      setForm(f => ({
+        ...f, ...data,
+        precio_unitario:  data.precio_unitario  ? String(Math.round(data.precio_unitario))  : '',
+        precio_descuento: data.precio_descuento ? String(Math.round(data.precio_descuento)) : '',
+      }))
     } catch {
       toast('Código no registrado. Completa el formulario.', { icon: 'ℹ️' })
     }
@@ -88,7 +97,6 @@ export default function AddProductPage() {
     } finally { setLoading(false) }
   }
 
-  // Precio vigente preview
   const precioVigentePreview = form.precio_descuento
     ? Number(form.precio_descuento)
     : Number(form.precio_unitario) || 0
@@ -143,7 +151,9 @@ export default function AddProductPage() {
               <select value={form.categoria_id} onChange={e => set('categoria_id', e.target.value)}
                 className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary">
                 <option value="">Seleccionar...</option>
-                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                {categorias.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
               </select>
             </div>
 
@@ -160,25 +170,24 @@ export default function AddProductPage() {
                 className="w-full h-14 px-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary" />
             </div>
 
-            {/* ── Precios ── */}
+            {/* Precios */}
             <div className="col-span-full">
               <div className="h-px bg-zinc-100 my-2" />
               <h4 className="font-bold text-base mb-4 text-on-surface-variant">Precios</h4>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-on-surface-variant mb-2">
-                Precio Normal (CLP)
-              </label>
+              <label className="block text-sm font-semibold text-on-surface-variant mb-2">Precio Normal (CLP)</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">$</span>
-                <input type="number" min="0" step="1"
+                <input
+                  inputMode="numeric"
                   value={form.precio_unitario}
-                  onChange={e => set('precio_unitario', e.target.value)}
+                  onChange={e => setPrecio('precio_unitario', e.target.value)}
                   className="w-full h-14 pl-8 pr-4 bg-surface-container-high rounded-lg outline-none focus:ring-2 focus:ring-primary"
                   placeholder="0" />
               </div>
-              <p className="text-xs text-on-surface-variant mt-1">Precio de venta regular del producto</p>
+              <p className="text-xs text-on-surface-variant mt-1">Solo números enteros, sin puntos ni comas</p>
             </div>
 
             <div>
@@ -188,15 +197,14 @@ export default function AddProductPage() {
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">$</span>
-                <input type="number" min="0" step="1"
+                <input
+                  inputMode="numeric"
                   value={form.precio_descuento}
-                  onChange={e => set('precio_descuento', e.target.value)}
+                  onChange={e => setPrecio('precio_descuento', e.target.value)}
                   className={`w-full h-14 pl-8 pr-4 rounded-lg outline-none focus:ring-2 ${form.precio_descuento ? 'bg-tertiary-fixed focus:ring-tertiary border-2 border-tertiary' : 'bg-surface-container-high focus:ring-primary'}`}
                   placeholder="Solo si tiene precio rebajado" />
               </div>
-              <p className="text-xs text-on-surface-variant mt-1">
-                Si se define, reemplaza al precio normal en ventas y totales del inventario
-              </p>
+              <p className="text-xs text-on-surface-variant mt-1">Solo números enteros, sin puntos ni comas</p>
             </div>
 
             {/* Preview precio vigente */}
