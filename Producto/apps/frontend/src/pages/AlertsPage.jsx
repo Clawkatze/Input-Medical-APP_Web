@@ -11,10 +11,12 @@ export default function AlertsPage() {
   const [alertas,  setAlertas]  = useState([])
   const [loading,  setLoading]  = useState(true)
   const [filtro,   setFiltro]   = useState('todos')
-  const { isBodeguero } = useAuth()
+  const { isBodeguero, clearAlertasCount } = useAuth()
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
+    clearAlertasCount()
+
     // Si viene desde el dashboard con ?filtro=vencimiento, preseleccionar filtro
     const filtroUrl = searchParams.get('filtro')
     if (filtroUrl === 'vencimiento') setFiltro('vencimiento')

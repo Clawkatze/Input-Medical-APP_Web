@@ -6,6 +6,7 @@ import api from '../services/api'
 import { PageLayout } from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
+import PrintLabelModal from '../components/PrintLabelModal'
 
 const FORM_INIT = {
   numero_lote:       '',
@@ -15,11 +16,12 @@ const FORM_INIT = {
 }
 
 export default function RegisterEntryPage() {
-  const [busqueda,  setBusqueda]  = useState('')
-  const [producto,  setProducto]  = useState(null)
-  const [lotes,     setLotes]     = useState([])
-  const [form,      setForm]      = useState(FORM_INIT)
-  const [loading,   setLoading]   = useState(false)
+  const [busqueda,    setBusqueda]    = useState('')
+  const [producto,    setProducto]    = useState(null)
+  const [lotes,       setLotes]       = useState([])
+  const [form,        setForm]        = useState(FORM_INIT)
+  const [loading,     setLoading]     = useState(false)
+  const [printModal,  setPrintModal]  = useState(null) // { producto, lote }
   const barcodeRef = useRef(null)
   const navigate   = useNavigate()
   const { user }   = useAuth()
@@ -70,7 +72,15 @@ export default function RegisterEntryPage() {
         observacion:      form.observacion || null,
       })
       toast.success(`Lote ${form.numero_lote} registrado — +${form.cantidad} unidades`)
-      navigate(`/products/${producto.id}/history`)
+      // Mostrar modal de impresión antes de navegar
+      setPrintModal({
+        producto,
+        lote: {
+          numero_lote:       form.numero_lote,
+          fecha_vencimiento: form.fecha_vencimiento || null,
+          cantidad:          Number(form.cantidad),
+        },
+      })
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error al registrar entrada')
     } finally {
@@ -83,8 +93,21 @@ export default function RegisterEntryPage() {
     return producto.stock_actual + Number(form.cantidad)
   }
 
+  const handlePrintClose = () => {
+    const prod = printModal?.producto
+    setPrintModal(null)
+    if (prod) navigate(`/products/${prod.id}/history`)
+  }
+
   return (
     <PageLayout title="Registrar Entrada de Stock">
+      {printModal && (
+        <PrintLabelModal
+          producto={printModal.producto}
+          lote={printModal.lote}
+          onClose={handlePrintClose}
+        />
+      )}
       <div className="max-w-7xl mx-auto flex gap-8">
 
         {/* Columna principal */}

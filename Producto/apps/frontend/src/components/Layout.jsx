@@ -19,7 +19,7 @@ const ROL_COLOR = {
 export function SideNavBar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, signOut, isSuperAdmin, isAdmin, isBodeguero, canViewReports } = useAuth()
+  const { user, signOut, isSuperAdmin, isAdmin, isBodeguero, canViewReports, alertasCount } = useAuth()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -59,7 +59,14 @@ export function SideNavBar() {
                 ? 'bg-white text-primary font-bold shadow-sm translate-x-1'
                 : 'text-zinc-600 hover:bg-zinc-200'
             }`}>
-            <span className="material-symbols-outlined text-[20px]">{icon}</span>
+            <span className="relative">
+              <span className="material-symbols-outlined text-[20px]">{icon}</span>
+              {path === '/alerts' && alertasCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-0.5 leading-none">
+                  {alertasCount > 99 ? '99+' : alertasCount}
+                </span>
+              )}
+            </span>
             <span className="font-medium text-sm">{label}</span>
           </Link>
         ))}
