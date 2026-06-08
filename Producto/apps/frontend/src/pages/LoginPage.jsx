@@ -14,6 +14,8 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
+      sessionStorage.removeItem('alertas_modal_visto')
+      console.log('sessionStorage después de remove:', sessionStorage.getItem('alertas_modal_visto'))
       await signIn(email, password)
       navigate('/')
     } catch (err) {

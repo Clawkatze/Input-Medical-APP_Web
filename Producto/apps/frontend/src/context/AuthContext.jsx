@@ -41,12 +41,14 @@ export function AuthProvider({ children }) {
     localStorage.setItem('user', JSON.stringify(data.user))
     setUser(data.user)
     fetchAlertasCount()
+    sessionStorage.removeItem('alertas_modal_visto')
     return data.user
   }
 
   const signOut = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    sessionStorage.removeItem('alertas_modal_visto')
     setUser(null)
     setAlertasCount(0)
   }

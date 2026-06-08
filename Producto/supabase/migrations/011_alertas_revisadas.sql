@@ -18,6 +18,6 @@ CREATE INDEX IF NOT EXISTS idx_alertas_revisadas_fecha
   ON alertas_revisadas (fecha_revision DESC);
 
 -- Índice único para evitar duplicados por lote por día
-CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_revisadas_lote_dia
-  ON alertas_revisadas (lote_id, fecha_revision::date)
-  WHERE lote_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_alertas_revisadas_lote_dia
+  ON alertas_revisadas (lote_id, fecha_revision);
+
