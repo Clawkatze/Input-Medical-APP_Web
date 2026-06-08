@@ -15,10 +15,9 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signIn(email, password)
-      toast.success('Bienvenido/a')
       navigate('/')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Credenciales inválidas')
+      toast.error(err.response?.data?.error || 'Contraseña o email incorrectos')
     } finally {
       setLoading(false)
     }

@@ -32,6 +32,7 @@ services:
       - ./supabase/migrations/008_ajuste_descuento.sql:/docker-entrypoint-initdb.d/08_ajuste_descuento.sql:ro
       - ./supabase/migrations/009_eliminacion_permanente.sql:/docker-entrypoint-initdb.d/09_eliminacion_permanente.sql:ro
       - ./supabase/migrations/010_indices_unicos_parciales.sql:/docker-entrypoint-initdb.d/10_indices_unicos_parciales.sql:ro
+      - ./supabase/migrations/011_alertas_revisadas.sql:/docker-entrypoint-initdb.d/11_alertas_revisadas.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
@@ -48,23 +49,22 @@ services:
     ports:
       - "4000:4000"
     environment:
-      NODE_ENV:      development
-      PORT:          4000
-      DB_HOST:       db          # Cambia a tu host si usas BD externa
-      DB_PORT:       5432
-      DB_NAME:       ${DB_NAME:-inputmedical}
-      DB_USER:       ${DB_USER:-postgres}
-      DB_PASSWORD:   ${DB_PASSWORD:-postgres}
-      JWT_SECRET:    ${JWT_SECRET:-cambia_esto_por_un_secreto_seguro_minimo_32_chars}
+      NODE_ENV:       development
+      PORT:           4000
+      DB_HOST:        db          # Cambia a tu host si usas BD externa
+      DB_PORT:        5432
+      DB_NAME:        ${DB_NAME:-inputmedical}
+      DB_USER:        ${DB_USER:-postgres}
+      DB_PASSWORD:    ${DB_PASSWORD:-postgres}
+      JWT_SECRET:     ${JWT_SECRET:-cambia_esto_por_un_secreto_seguro_minimo_32_chars}
       JWT_EXPIRES_IN: 8h
-      FRONTEND_URL:  http://localhost:5173
+      FRONTEND_URL:   http://localhost:5173
     depends_on:
       db:
         condition: service_healthy
-    # En desarrollo, monta el código para hot-reload con nodemon
+    # Solo monta src/ para hot-reload — node_modules queda intacto en el contenedor
     volumes:
-      - ./apps/backend:/app
-      - /app/node_modules
+      - ./apps/backend/src:/app/src
     command: node src/server.js
 
   # ─── Frontend React + Vite ────────────────────────────────────────────────────
@@ -78,11 +78,11 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:4000
-    volumes:
-      - ./apps/frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
+    # Solo monta src/ para hot-reload — node_modules queda intacto en el contenedor
+    volumes:
+      - ./apps/frontend/src:/app/src
 
 volumes:
   db_data:

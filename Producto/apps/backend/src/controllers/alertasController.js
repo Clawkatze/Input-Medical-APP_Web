@@ -8,13 +8,13 @@ async function getCount(req, res, next) {
       FROM lotes l
       JOIN productos p ON p.id = l.producto_id
       WHERE p.activo = true
+        AND p.eliminado_at IS NULL
         AND l.cantidad_actual > 0
         AND l.fecha_vencimiento IS NOT NULL
         AND l.fecha_vencimiento <= CURRENT_DATE + (90 * INTERVAL '1 day')
         AND NOT EXISTS (
           SELECT 1 FROM alertas_revisadas ar
-          WHERE ar.producto_id = l.producto_id
-            AND ar.lote_id     = l.id
+          WHERE ar.lote_id = l.id
             AND ar.fecha_revision::date = CURRENT_DATE
         )
     `)
@@ -38,13 +38,13 @@ async function getPendientes(req, res, next) {
       FROM lotes l
       JOIN productos p ON p.id = l.producto_id
       WHERE p.activo = true
+        AND p.eliminado_at IS NULL
         AND l.cantidad_actual > 0
         AND l.fecha_vencimiento IS NOT NULL
         AND l.fecha_vencimiento <= CURRENT_DATE + (90 * INTERVAL '1 day')
         AND NOT EXISTS (
           SELECT 1 FROM alertas_revisadas ar
-          WHERE ar.producto_id = l.producto_id
-            AND ar.lote_id     = l.id
+          WHERE ar.lote_id = l.id
             AND ar.fecha_revision::date = CURRENT_DATE
         )
       ORDER BY l.fecha_vencimiento ASC
@@ -59,7 +59,6 @@ async function marcarRevisadas(req, res, next) {
   if (!alertas || !alertas.length) {
     return res.status(400).json({ error: 'No hay alertas para marcar' })
   }
-  const usuario_id = req.user.id
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -67,7 +66,8 @@ async function marcarRevisadas(req, res, next) {
       await client.query(`
         INSERT INTO alertas_revisadas (producto_id, lote_id, fecha_vencimiento, revisado_por)
         VALUES ($1, $2, $3, $4)
-      `, [a.producto_id, a.lote_id || null, a.fecha_vencimiento || null, usuario_id])
+        ON CONFLICT DO NOTHING
+      `, [a.producto_id, a.lote_id || null, a.fecha_vencimiento || null, req.user?.id || null])
     }
     await client.query('COMMIT')
     res.json({ message: 'Alertas marcadas como revisadas', total: alertas.length })
