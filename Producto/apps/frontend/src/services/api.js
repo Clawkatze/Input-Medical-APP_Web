@@ -13,10 +13,12 @@ api.interceptors.request.use((config) => {
 })
 
 // Si el token expiró, redirige al login
+// EXCEPTO si el error viene del endpoint de login (deja que el catch lo maneje)
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const esLoginEndpoint = err.config?.url?.includes('/api/auth/login')
+    if (err.response?.status === 401 && !esLoginEndpoint) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'

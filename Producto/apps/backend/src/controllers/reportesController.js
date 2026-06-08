@@ -22,7 +22,10 @@ function formatFechaHora(val) {
 
 function formatFechaSolo(val) {
   if (!val) return '—'
-  const d = new Date(val + 'T00:00:00')
+  // Soporta tanto string como objeto Date de PostgreSQL
+  const str = val instanceof Date ? val.toISOString().split('T')[0] : String(val).split('T')[0]
+  const d = new Date(str + 'T00:00:00')
+  if (isNaN(d.getTime())) return '—'
   const M = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   return `${d.getDate().toString().padStart(2,'0')} ${M[d.getMonth()]} ${d.getFullYear()}`
 }

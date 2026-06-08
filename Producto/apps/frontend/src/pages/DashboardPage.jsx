@@ -5,31 +5,40 @@ import { es } from 'date-fns/locale'
 import api from '../services/api'
 import { PageLayout } from '../components/Layout'
 import { formatCLP } from '../services/precio'
+import AlertasLoginModal from '../components/AlertasLoginModal'
 import toast from 'react-hot-toast'
 
 export default function DashboardPage() {
-  const [stats,       setStats]       = useState({
+  const [stats,            setStats]            = useState({
     total_productos: 0, stock_critico: 0, proximos_vencer: 0,
     movimientos_hoy: 0, ventas_hoy: 0, mermas_hoy: 0,
     descuentos_hoy: 0, valor_total_inventario: 0
   })
-  const [movimientos, setMovimientos] = useState([])
-  const [alertas,     setAlertas]     = useState([])
-  const [loading,     setLoading]     = useState(true)
+  const [movimientos,      setMovimientos]      = useState([])
+  const [alertasPendientes, setAlertasPendientes] = useState(null)
+  const [modalVisto,       setModalVisto]       = useState(false)
+  const [loading,          setLoading]          = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
     try {
-      const [statsRes, movsRes, alertasRes] = await Promise.all([
+      const [statsRes, movsRes] = await Promise.all([
         api.get('/api/movimientos/dashboard-stats'),
         api.get('/api/movimientos?limit=10'),
-        api.get('/api/movimientos/alertas'),
       ])
       setStats(statsRes.data)
       setMovimientos(movsRes.data)
-      setAlertas(alertasRes.data)
+
+      // Cargar alertas pendientes para el modal — solo si no se ha visto en esta sesión
+      const visto = sessionStorage.getItem('alertas_modal_visto')
+      if (!visto) {
+        try {
+          const { data } = await api.get('/api/alertas/pendientes')
+          if (data.length > 0) setAlertasPendientes(data)
+        } catch {}
+      }
     } catch {
       toast.error('Error al cargar el dashboard')
     } finally {
@@ -37,14 +46,9 @@ export default function DashboardPage() {
     }
   }
 
-  const handleExportCSV = async () => {
-    try {
-      const res = await api.get('/api/reportes/movimientos', { responseType: 'blob' })
-      const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a')
-      a.href = url; a.download = 'movimientos.xlsx'; a.click()
-      URL.revokeObjectURL(url)
-    } catch { toast.error('Error al exportar') }
+  const handleCloseModal = () => {
+    setAlertasPendientes(null)
+    sessionStorage.setItem('alertas_modal_visto', '1')
   }
 
   const getBadge = (row) => {
@@ -63,8 +67,7 @@ export default function DashboardPage() {
   }
 
   const getTotal = (row) => {
-    if (row.tipo === 'ELIMINACION') return null
-    if (!row.total || row.total <= 0) return null
+    if (row.tipo === 'ELIMINACION' || !row.total || row.total <= 0) return null
     if (row.motivo === 'MERMA') return { valor: `-${formatCLP(row.total)}`, color: 'text-error font-black' }
     if (row.tipo === 'ENTRADA') return { valor: formatCLP(row.total), color: 'text-secondary font-bold' }
     return { valor: formatCLP(row.total), color: 'text-primary font-bold' }
@@ -72,29 +75,24 @@ export default function DashboardPage() {
 
   return (
     <PageLayout title="Panel de Control">
-      {alertas.length > 0 && (
-        <div className="mb-6 bg-tertiary-fixed text-on-tertiary-fixed p-4 rounded-xl flex items-center justify-between border-l-4 border-tertiary shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-tertiary">warning</span>
-            <span className="font-medium">⚠️ Tienes {alertas.length} producto{alertas.length > 1 ? 's' : ''} con alertas</span>
-          </div>
-          <Link to="/alerts" className="text-tertiary font-bold text-sm hover:underline">Ver Detalles</Link>
-        </div>
+      {/* Modal alertas — aparece una vez por sesión */}
+      {alertasPendientes && (
+        <AlertasLoginModal
+          alertas={alertasPendientes}
+          onClose={handleCloseModal}
+        />
       )}
 
-      {/* 4 stat cards — Stock Crítico y Próximo a Vencer son clickeables */}
+      {/* 4 stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
-        {/* Total Productos */}
         <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15">
           <p className="text-on-surface-variant font-semibold text-sm">Total Productos</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl font-bold text-primary">{loading ? '—' : stats.total_productos}</span>
-            <span className="material-symbols-outlined text-sm text-on-surface-variant">inventory</span>
           </div>
           <p className="text-xs text-on-surface-variant mt-4">productos activos</p>
         </div>
 
-        {/* Stock Crítico — link a /products con filtro */}
         <button onClick={() => navigate('/products?filtro=critico')}
           className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15 text-left hover:bg-error/5 hover:border-error/20 transition-all group">
           <p className="text-on-surface-variant font-semibold text-sm group-hover:text-error transition-colors">Stock Crítico</p>
@@ -108,7 +106,6 @@ export default function DashboardPage() {
           </p>
         </button>
 
-        {/* Próximos a Vencer — link a /alerts */}
         <button onClick={() => navigate('/alerts?filtro=vencimiento')}
           className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15 text-left hover:bg-tertiary/5 hover:border-tertiary/20 transition-all group">
           <p className="text-on-surface-variant font-semibold text-sm group-hover:text-tertiary transition-colors">Próximos a Vencer</p>
@@ -122,12 +119,10 @@ export default function DashboardPage() {
           </p>
         </button>
 
-        {/* Movimientos Hoy */}
         <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/15">
           <p className="text-on-surface-variant font-semibold text-sm">Movimientos Hoy</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl font-bold text-secondary">{loading ? '—' : stats.movimientos_hoy}</span>
-            <span className="material-symbols-outlined text-sm text-on-surface-variant">sync_alt</span>
           </div>
           <p className="text-xs text-on-surface-variant mt-4">Transacciones</p>
         </div>
@@ -138,7 +133,7 @@ export default function DashboardPage() {
         <div className="bg-gradient-to-r from-secondary/5 to-secondary/10 p-5 rounded-xl border border-secondary/20 flex items-center justify-between">
           <div>
             <p className="text-on-surface-variant font-semibold text-sm">Ventas del Día</p>
-            <p className="text-xs text-on-surface-variant mt-1">Total cobrado a clientes</p>
+            <p className="text-xs text-on-surface-variant mt-1">Total cobrado</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-2xl">payments</span>
@@ -149,7 +144,7 @@ export default function DashboardPage() {
         <div className="bg-gradient-to-r from-tertiary/5 to-tertiary/10 p-5 rounded-xl border border-tertiary/20 flex items-center justify-between">
           <div>
             <p className="text-on-surface-variant font-semibold text-sm">Descuentos Aplicados</p>
-            <p className="text-xs text-on-surface-variant mt-1">Diferencia precio normal vs V.DESC</p>
+            <p className="text-xs text-on-surface-variant mt-1">Precio normal vs V.DESC</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-tertiary text-2xl">local_offer</span>
@@ -184,13 +179,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tabla movimientos recientes */}
+      {/* Movimientos recientes */}
       <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/15 overflow-hidden">
         <div className="p-6 flex items-center justify-between">
           <h2 className="text-xl font-bold">Movimientos Recientes</h2>
-          <button onClick={handleExportCSV} className="px-4 py-2 text-sm font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors">
-            Descargar Excel
-          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
