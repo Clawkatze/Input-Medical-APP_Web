@@ -1,6 +1,6 @@
 # 🏥 Input Medical - Sistema de Gestión de Inventario
 
-Sistema web para control de stock de insumos médicos con lógica FIFO, alertas de vencimiento, trazabilidad completa, precios con descuento y gestión de usuarios por roles.
+Sistema web para control de stock de insumos médicos con lógica FIFO, alertas de vencimiento, trazabilidad completa, precios con descuento, reportes Excel y gestión de usuarios por roles.
 
 **Stack:** React + Vite · Node.js + Express · PostgreSQL · Docker
 
@@ -28,21 +28,24 @@ inputmedical/
 │       │   ├── context/           ← AuthContext con helpers de rol
 │       │   ├── services/          ← Cliente Axios + helpers de precio
 │       │   ├── components/        ← Layout con nav dinámico por rol
-│       │   └── pages/             ← 10 páginas de la aplicación
+│       │   └── pages/             ← Páginas de la aplicación
 │       ├── Dockerfile
 │       ├── package.json
 │       └── .env.example
 │
 ├── supabase/
 │   └── migrations/
-│       ├── 001_schema.sql         ← Tablas, vistas, funciones FIFO base
-│       ├── 002_seed.sql           ← Datos de demo (sin usuario hardcodeado)
-│       ├── 003_precios.sql        ← precio_unitario + columnas de precio en movimientos
-│       ├── 004_valor_inventario.sql ← Vista v_valor_inventario + fn_gran_total
-│       ├── 005_precio_descuento.sql ← precio_descuento por producto (V.DESC)
-│       ├── 006_roles.sql          ← Sistema de 4 roles
+│       ├── 001_schema.sql               ← Tablas, vistas, funciones FIFO base
+│       ├── 002_seed.sql                 ← Datos de demo
+│       ├── 003_precios.sql              ← precio_unitario + columnas de precio en movimientos
+│       ├── 004_valor_inventario.sql     ← Vista v_valor_inventario + fn_gran_total
+│       ├── 005_precio_descuento.sql     ← precio_descuento por producto (V.DESC)
+│       ├── 006_roles.sql                ← Sistema de 4 roles
 │       ├── 007_entrada_precio_merma.sql ← Precio en entradas + función merma por lote
-│       └── 008_ajuste_descuento.sql ← fn_registrar_salida definitiva
+│       ├── 008_ajuste_descuento.sql     ← fn_registrar_salida definitiva
+│       ├── 009_eliminacion_permanente.sql ← Eliminación permanente + vistas actualizadas
+│       ├── 010_indices_unicos_parciales.sql ← Índices parciales + fn_eliminar_producto
+│       └── 011_alertas_revisadas.sql    ← Tabla alertas_revisadas
 │
 ├── docker-compose.yml
 ├── .env.example
@@ -83,32 +86,10 @@ cp apps/frontend/.env.example apps/frontend/.env
 cp .env.example .env && cp apps/backend/.env.example apps/backend/.env && cp apps/frontend/.env.example apps/frontend/.env
 ```
 
----
-
-### Paso 2 — Instalar dependencias
-
-**Windows (PowerShell):**
-```powershell
-cd apps/backend
-npm install
-cd ../..
-cd apps/frontend
-npm install
-cd ../..
-```
-
-**Mac / Linux:**
-```bash
-cd apps/backend && npm install && cd ../..
-cd apps/frontend && npm install && cd ../..
-```
-
----
-
-### Paso 3 — Levantar los contenedores
+### Paso 2 — Levantar los contenedores
 
 ```powershell
-docker compose up -d
+docker compose up -d --build
 ```
 
 Verifica que los tres contenedores estén en `Up`:
@@ -123,22 +104,15 @@ inputmedical_backend   Up
 inputmedical_frontend  Up
 ```
 
-> ⚠️ Si `inputmedical_backend` aparece como `Restarting`:
-> ```powershell
-> docker logs inputmedical_backend
-> ```
-
 | Servicio  | URL                   |
 |-----------|-----------------------|
 | Frontend  | http://localhost:5173 |
 | Backend   | http://localhost:4000 |
 | BD (psql) | localhost:5432        |
 
----
+### Paso 3 — Ingresar al sistema
 
-### Paso 4 — Ingresar al sistema
-
-El **Super Admin se crea automáticamente** al arrancar el backend usando las variables del `.env`. No se requiere ningún paso manual.
+El **Super Admin se crea automáticamente** al arrancar el backend.
 
 Abre el navegador en **http://localhost:5173**
 
@@ -146,17 +120,6 @@ Abre el navegador en **http://localhost:5173**
 - **Contraseña:** `admin123` _(o el que definas en `SUPERADMIN_PASSWORD`)_
 
 > ⚠️ Cambia la contraseña del Super Admin desde el panel de Usuarios después del primer ingreso.
-
----
-
-### Paso 5 — Crear usuarios adicionales
-
-Los usuarios se crean desde la interfaz web, sin tocar SQL ni archivos:
-
-1. Inicia sesión como Super Admin
-2. Ve a **Usuarios** en el menú lateral
-3. Click en **Nuevo Usuario**
-4. Completa nombre, email, contraseña y rol
 
 ---
 
@@ -172,6 +135,9 @@ psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/005_precio_descuen
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/006_roles.sql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/007_entrada_precio_merma.sql
 psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/008_ajuste_descuento.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/009_eliminacion_permanente.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/010_indices_unicos_parciales.sql
+psql -h TU_HOST -U TU_USUARIO -d TU_BD -f supabase/migrations/011_alertas_revisadas.sql
 ```
 
 > En Supabase puedes pegar cada archivo en el **SQL Editor** del proyecto.
@@ -185,20 +151,58 @@ DB_USER=TU_USUARIO
 DB_PASSWORD=TU_CONTRASEÑA
 ```
 
-**3. Comentar el servicio `db` en `docker-compose.yml`:**
-```yaml
-# db:
-#   image: ...
-```
-
-**4. Levantar solo backend y frontend:**
+**3. Levantar sin la BD Docker:**
 ```powershell
-docker compose up -d backend frontend
+docker compose up -d --build backend frontend
 ```
 
 ---
 
-## 🛠 Comandos útiles
+## ☁️ Despliegue en producción (Supabase + Railway + Vercel)
+
+### Base de datos — Supabase
+
+1. Crear proyecto en [supabase.com](https://supabase.com)
+2. Ejecutar las 11 migrations en orden desde el **SQL Editor**
+3. Obtener la connection string desde **Settings → Database → Transaction pooler**
+
+### Backend — Railway
+
+1. Crear cuenta en [railway.app](https://railway.app)
+2. **New Project → Deploy from GitHub repo**
+3. Seleccionar el repositorio y configurar **Root Directory** como `Producto/apps/backend`
+4. Agregar las variables de entorno:
+
+```env
+NODE_ENV=production
+PORT=4000
+DB_HOST=aws-x-region.pooler.supabase.com
+DB_PORT=6543
+DB_NAME=postgres
+DB_USER=postgres.xxxxxxxxxxxx
+DB_PASSWORD=tu_contraseña_supabase
+JWT_SECRET=un_secreto_seguro_de_minimo_32_caracteres
+JWT_EXPIRES_IN=8h
+FRONTEND_URL=https://tu-app.vercel.app
+SUPERADMIN_EMAIL=admin@inputmedical.cl
+SUPERADMIN_PASSWORD=cambia_esto
+SUPERADMIN_NOMBRE=Administrador
+```
+
+### Frontend — Vercel
+
+1. Crear cuenta en [vercel.com](https://vercel.com)
+2. **New Project → Import Git Repository**
+3. Configurar **Root Directory** como `Producto/apps/frontend`
+4. Agregar variable de entorno:
+
+```env
+VITE_API_URL=https://tu-backend.railway.app
+```
+
+---
+
+## 🛠 Comandos útiles (desarrollo local)
 
 ```powershell
 # Ver logs en tiempo real
@@ -207,32 +211,30 @@ docker compose logs -f
 # Solo backend
 docker compose logs -f backend
 
-# Reiniciar un servicio
-docker compose restart backend
-
 # Detener todo (mantiene la BD)
 docker compose down
 
 # Reset total — borra la BD y vuelve a aplicar todas las migraciones
 docker compose down -v
-docker compose up -d
+docker compose up -d --build
 ```
 
 ---
 
 ## 👥 Roles del sistema
 
-| Módulo                 | Super Admin | Admin | Bodeguero | Visualizador |
-|------------------------|:-----------:|:-----:|:---------:|:------------:|
-| Dashboard              | ✅ | ✅ | ✅ | ✅ |
-| Ver Productos          | ✅ | ✅ | ✅ | ✅ |
-| Crear/Editar Productos | ✅ | ✅ | ❌ | ❌ |
-| Registrar Entrada      | ✅ | ✅ | ✅ | ❌ |
-| Registrar Salida/Merma | ✅ | ✅ | ✅ | ❌ |
-| Alertas                | ✅ | ✅ | ✅ | ✅ |
-| Reportes CSV           | ✅ | ✅ | ❌ | ✅ |
-| Gestión de Usuarios    | ✅ | ❌ | ❌ | ❌ |
-| Precios y Descuentos   | ✅ | ✅ | ❌ | ❌ |
+| Módulo                  | Super Admin | Admin | Bodeguero | Visualizador |
+|-------------------------|:-----------:|:-----:|:---------:|:------------:|
+| Dashboard               | ✅ | ✅ | ✅ | ✅ |
+| Ver Productos           | ✅ | ✅ | ✅ | ✅ |
+| Crear/Editar Productos  | ✅ | ✅ | ❌ | ❌ |
+| Registrar Entrada       | ✅ | ✅ | ✅ | ❌ |
+| Registrar Salida/Merma  | ✅ | ✅ | ✅ | ❌ |
+| Alertas / Monitor       | ✅ | ✅ | ✅ | ✅ |
+| Reportes Excel          | ✅ | ✅ | ❌ | ✅ |
+| Reporte Financiero      | ✅ | ✅ | ❌ | ✅ |
+| Gestión de Usuarios     | ✅ | ❌ | ❌ | ❌ |
+| Precios y Descuentos    | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
@@ -257,42 +259,51 @@ docker compose up -d
 | Método | Endpoint                          | Roles            |
 |--------|-----------------------------------|------------------|
 | GET    | `/api/productos`                  | Todos            |
+| GET    | `/api/productos/categorias`       | Todos            |
 | GET    | `/api/productos/barcode/:codigo`  | Todos            |
+| GET    | `/api/productos/:id`              | Todos            |
 | POST   | `/api/productos`                  | SuperAdmin/Admin |
 | PUT    | `/api/productos/:id`              | SuperAdmin/Admin |
 | DELETE | `/api/productos/:id`              | SuperAdmin/Admin |
+| PUT    | `/api/productos/:id/reactivar`    | SuperAdmin/Admin |
+| DELETE | `/api/productos/:id/permanente`   | SuperAdmin/Admin |
 
 ### Movimientos
-| Método | Endpoint                              | Roles                      |
-|--------|---------------------------------------|----------------------------|
-| GET    | `/api/movimientos`                    | Todos                      |
-| GET    | `/api/movimientos/alertas`            | Todos                      |
-| GET    | `/api/movimientos/dashboard-stats`    | Todos                      |
-| GET    | `/api/movimientos/valor-inventario`   | Todos                      |
-| GET    | `/api/movimientos/lotes/:producto_id` | Todos                      |
-| POST   | `/api/movimientos/entrada`            | SuperAdmin/Admin/Bodeguero |
-| POST   | `/api/movimientos/salida`             | SuperAdmin/Admin/Bodeguero |
-| POST   | `/api/movimientos/merma`              | SuperAdmin/Admin/Bodeguero |
+| Método | Endpoint                                  | Roles                      |
+|--------|-------------------------------------------|----------------------------|
+| GET    | `/api/movimientos`                        | Todos                      |
+| GET    | `/api/movimientos/alertas`                | Todos                      |
+| GET    | `/api/movimientos/dashboard-stats`        | Todos                      |
+| GET    | `/api/movimientos/valor-inventario`       | Todos                      |
+| GET    | `/api/movimientos/lotes/:producto_id`     | Todos                      |
+| GET    | `/api/movimientos/reporte-financiero`     | Todos                      |
+| POST   | `/api/movimientos/entrada`                | SuperAdmin/Admin/Bodeguero |
+| POST   | `/api/movimientos/salida`                 | SuperAdmin/Admin/Bodeguero |
+| POST   | `/api/movimientos/merma`                  | SuperAdmin/Admin/Bodeguero |
+
+### Alertas
+| Método | Endpoint                  | Descripción                              |
+|--------|---------------------------|------------------------------------------|
+| GET    | `/api/alertas/count`      | Contador de alertas pendientes           |
+| GET    | `/api/alertas/pendientes` | Lotes con vencimiento ≤90 días sin revisar |
+| POST   | `/api/alertas/revisar`    | Marcar alertas como revisadas hoy        |
 
 ### Reportes _(SuperAdmin, Admin y Visualizador)_
-| Método | Endpoint                     | Descripción                    |
-|--------|------------------------------|--------------------------------|
-| GET    | `/api/reportes/stock`        | CSV stock actual + valor total |
-| GET    | `/api/reportes/vencimientos` | CSV productos por vencer       |
-| GET    | `/api/reportes/movimientos`  | CSV Kardex completo            |
+| Método | Endpoint                      | Descripción                          |
+|--------|-------------------------------|--------------------------------------|
+| GET    | `/api/reportes/stock`         | Excel stock actual + valor total     |
+| GET    | `/api/reportes/vencimientos`  | Excel productos por vencer hasta 90d |
+| GET    | `/api/reportes/movimientos`   | Excel Kardex completo                |
+| GET    | `/api/reportes/financiero`    | Excel reporte financiero por período |
 
 ---
 
 ## 💰 Sistema de Precios
 
-Cada producto tiene dos campos de precio:
+- **Precio Normal** (`precio_unitario`) — precio de venta regular
+- **V.DESC** (`precio_descuento`) — precio rebajado opcional
 
-- **Precio Normal** (`precio_unitario`) — precio de venta regular definido por la empresa
-- **V.DESC** (`precio_descuento`) — precio rebajado opcional para productos con descuento
-
-El sistema usa automáticamente `precio_descuento` si existe, sino `precio_unitario`. Al registrar una venta el precio vigente y el descuento aplicado quedan capturados en el movimiento para trazabilidad histórica.
-
-El **Valor Total del Inventario** se calcula como `stock_actual × precio_vigente` por producto, visible en el dashboard y en la tabla de productos.
+El sistema usa automáticamente `precio_descuento` si existe, sino `precio_unitario`. El **Valor Total del Inventario** se calcula como `stock_actual × precio_vigente` y se actualiza en tiempo real.
 
 ---
 
@@ -300,20 +311,39 @@ El **Valor Total del Inventario** se calcula como `stock_actual × precio_vigent
 
 | Motivo  | Genera Monto | Descripción |
 |---------|:------------:|-------------|
-| VENTA   | ✅ | Venta a cliente. Usa precio vigente y calcula descuento si aplica V.DESC. |
-| AJUSTE  | ❌ | Corrección de inventario. Solo descuenta unidades sin registrar monto. Usar cuando el conteo físico tiene menos unidades de las que dice el sistema. Si se encontraron unidades sin registrar, usar Registrar Entrada. |
-| MERMA   | ✅ | Baja de producto vencido o dañado. Requiere selección manual del lote afectado. |
+| VENTA   | ✅ | Usa precio vigente, calcula descuento si aplica V.DESC |
+| AJUSTE  | ❌ | Solo descuenta unidades, sin precio ni monto |
+| MERMA   | ✅ | Selección manual de lote, usa precio vigente |
 
 ---
 
 ## ⚙️ Cómo funciona FIFO / FEFO
 
-**Ventas y Ajustes** usan FIFO automático:
-1. Verifica que haya stock suficiente
-2. Ordena los lotes por `fecha_vencimiento ASC` (el que vence antes, primero)
-3. Descuenta del primer lote disponible
-4. Si la cantidad supera ese lote, continúa con el siguiente
-5. Registra el precio vigente en cada movimiento
-6. Actualiza el `stock_actual` del producto
+**Ventas y Ajustes** — FIFO automático por `fecha_vencimiento ASC`.
 
-**Mermas** usan selección manual de lote porque corresponden a una baja específica de un lote vencido o dañado identificado físicamente, no a una salida comercial.
+**Mermas** — selección manual del lote afectado, ya que corresponden a una baja específica identificada físicamente.
+
+---
+
+## 🔔 Sistema de Alertas
+
+El **Monitor de Estado** muestra:
+- **Stock Crítico** — productos con `stock_actual ≤ stock_minimo`
+- **Próximo a Vencer** — lotes con vencimiento en los próximos 90 días
+
+Los filtros de días (≤30 / ≤60 / ≤90) aplican solo en la pestaña de vencimiento.
+
+Al iniciar sesión aparece un modal con los lotes no revisados hoy. Las alertas revisadas se registran en `alertas_revisadas` y no vuelven a aparecer hasta el día siguiente.
+
+---
+
+## 📊 Reporte Financiero
+
+Accesible desde **Reporte Financiero** en el menú lateral. Filtros disponibles:
+
+- **Hoy** — corte a medianoche hora Chile (America/Santiago)
+- **Esta semana** — desde el lunes de la semana actual
+- **Este mes** — desde el primer día del mes actual
+- **Rango personalizado** — fecha desde / hasta a elección
+
+Incluye resumen de ventas, descuentos, mermas, neto y gráfico de evolución diaria. Exportable a Excel.
