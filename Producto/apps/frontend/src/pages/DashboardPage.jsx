@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -16,8 +16,8 @@ export default function DashboardPage() {
   })
   const [movimientos,      setMovimientos]      = useState([])
   const [alertasPendientes, setAlertasPendientes] = useState(null)
-  const [modalVisto,       setModalVisto]       = useState(false)
   const [loading,          setLoading]          = useState(true)
+  const modalMostrado = useRef(false)
   const navigate = useNavigate()
 
   useEffect(() => { fetchData() }, [])
@@ -31,9 +31,8 @@ export default function DashboardPage() {
       setStats(statsRes.data)
       setMovimientos(movsRes.data)
 
-      // Cargar alertas pendientes para el modal — solo si no se ha visto en esta sesión
-      const visto = sessionStorage.getItem('alertas_modal_visto')
-      if (!visto) {
+      if (!modalMostrado.current) {
+        modalMostrado.current = true
         try {
           const { data } = await api.get('/api/alertas/pendientes')
           if (data.length > 0) setAlertasPendientes(data)
@@ -48,7 +47,6 @@ export default function DashboardPage() {
 
   const handleCloseModal = () => {
     setAlertasPendientes(null)
-    sessionStorage.setItem('alertas_modal_visto', '1')
   }
 
   const getBadge = (row) => {
@@ -75,7 +73,6 @@ export default function DashboardPage() {
 
   return (
     <PageLayout title="Panel de Control">
-      {/* Modal alertas — aparece una vez por sesión */}
       {alertasPendientes && (
         <AlertasLoginModal
           alertas={alertasPendientes}
@@ -183,6 +180,20 @@ export default function DashboardPage() {
       <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/15 overflow-hidden">
         <div className="p-6 flex items-center justify-between">
           <h2 className="text-xl font-bold">Movimientos Recientes</h2>
+          <button
+            onClick={async () => {
+              try {
+                const res = await api.get('/api/reportes/movimientos', { responseType: 'blob' })
+                const url = URL.createObjectURL(res.data)
+                const a = document.createElement('a')
+                a.href = url; a.download = 'reporte_movimientos.xlsx'; a.click()
+                URL.revokeObjectURL(url)
+              } catch { toast.error('Error al exportar') }
+            }}
+            className="px-4 py-2 text-sm font-bold text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            Descargar Excel
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -194,6 +205,7 @@ export default function DashboardPage() {
                 <th className="px-6 py-4">Cant.</th>
                 <th className="px-6 py-4">Precio Unit.</th>
                 <th className="px-6 py-4">Total</th>
+                <th className="px-6 py-4">Observación</th>
                 <th className="px-6 py-4">Responsable</th>
               </tr>
             </thead>
@@ -227,6 +239,9 @@ export default function DashboardPage() {
                       {total ? <span className={total.color}>{total.valor}</span>
                               : <span className="text-zinc-300">—</span>}
                     </td>
+                    <td className="px-6 py-4 text-zinc-500 text-xs max-w-[200px] truncate">
+                      {row.observacion || '—'}
+                    </td>
                     <td className="px-6 py-4">{row.usuario_email || '—'}</td>
                   </tr>
                 )
@@ -238,3 +253,4 @@ export default function DashboardPage() {
     </PageLayout>
   )
 }
+

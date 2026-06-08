@@ -15,7 +15,7 @@ async function getCount(req, res, next) {
         AND NOT EXISTS (
           SELECT 1 FROM alertas_revisadas ar
           WHERE ar.lote_id = l.id
-            AND ar.fecha_revision::date = CURRENT_DATE
+            AND DATE(ar.fecha_revision AT TIME ZONE 'America/Santiago') = CURRENT_DATE
         )
     `)
     res.json({ total: rows[0].total })
@@ -45,7 +45,7 @@ async function getPendientes(req, res, next) {
         AND NOT EXISTS (
           SELECT 1 FROM alertas_revisadas ar
           WHERE ar.lote_id = l.id
-            AND ar.fecha_revision::date = CURRENT_DATE
+            AND DATE(ar.fecha_revision AT TIME ZONE 'America/Santiago') = CURRENT_DATE
         )
       ORDER BY l.fecha_vencimiento ASC
     `)

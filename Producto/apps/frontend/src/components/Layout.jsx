@@ -30,16 +30,16 @@ export function SideNavBar() {
     navigate('/login')
   }
 
-  // Nav items filtrados por rol
   const NAV_ITEMS = [
-    { path: '/',               label: 'Dashboard',         icon: 'dashboard',     show: true },
-    { path: '/products',       label: 'Productos',         icon: 'inventory_2',   show: true },
-    { path: '/add-product',    label: 'Nuevo Producto',    icon: 'add_box',       show: isAdmin },
-    { path: '/register-entry', label: 'Registrar Entrada', icon: 'move_to_inbox', show: isBodeguero },
-    { path: '/register-sale',  label: 'Registrar Salida',  icon: 'point_of_sale', show: isBodeguero },
-    { path: '/reports',        label: 'Reportes',          icon: 'analytics',     show: canViewReports },
-    { path: '/alerts',         label: 'Alertas',           icon: 'notifications', show: true },
-    { path: '/usuarios',       label: 'Usuarios',          icon: 'manage_accounts', show: isSuperAdmin },
+    { path: '/',                    label: 'Dashboard',           icon: 'dashboard',       show: true },
+    { path: '/products',            label: 'Productos',           icon: 'inventory_2',     show: true },
+    { path: '/add-product',         label: 'Nuevo Producto',      icon: 'add_box',         show: isAdmin },
+    { path: '/register-entry',      label: 'Registrar Entrada',   icon: 'move_to_inbox',   show: isBodeguero },
+    { path: '/register-sale',       label: 'Registrar Salida',    icon: 'point_of_sale',   show: isBodeguero },
+    { path: '/reports',             label: 'Reportes',            icon: 'analytics',       show: canViewReports },
+    { path: '/reporte-financiero',  label: 'Reporte Financiero',  icon: 'bar_chart',       show: canViewReports },
+    { path: '/alerts',              label: 'Alertas',             icon: 'notifications',   show: true },
+    { path: '/usuarios',            label: 'Usuarios',            icon: 'manage_accounts', show: isSuperAdmin },
   ].filter(item => item.show)
 
   return (
@@ -51,7 +51,7 @@ export function SideNavBar() {
         </p>
       </div>
 
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(({ path, label, icon }) => (
           <Link key={path} to={path}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${

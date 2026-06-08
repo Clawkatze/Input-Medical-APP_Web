@@ -120,14 +120,15 @@ async function reporteVencimientos(req, res, next) {
         COALESCE(p.precio_descuento, p.precio_unitario) AS precio_vigente,
         CASE
           WHEN l.fecha_vencimiento < CURRENT_DATE       THEN 'VENCIDO'
-          WHEN l.fecha_vencimiento <= CURRENT_DATE + 30 THEN 'PRÓXIMO'
-          ELSE 'OK'
+          WHEN l.fecha_vencimiento <= CURRENT_DATE + 30 THEN 'PRÓXIMO ≤30d'
+          WHEN l.fecha_vencimiento <= CURRENT_DATE + 60 THEN 'PRÓXIMO ≤60d'
+          ELSE 'PRÓXIMO ≤90d'
         END AS estado_vencimiento,
         (l.fecha_vencimiento - CURRENT_DATE) AS dias_restantes
       FROM productos p
       JOIN lotes l ON l.producto_id = p.id AND l.cantidad_actual > 0
       WHERE p.activo = true AND l.fecha_vencimiento IS NOT NULL
-        AND l.fecha_vencimiento <= CURRENT_DATE + 30
+        AND l.fecha_vencimiento <= CURRENT_DATE + 90
       ORDER BY l.fecha_vencimiento ASC
     `)
 
@@ -141,8 +142,10 @@ async function reporteVencimientos(req, res, next) {
 
     rows.forEach(r => {
       const vencido = r.estado_vencimiento === 'VENCIDO'
-      const proximo = r.estado_vencimiento === 'PRÓXIMO'
-      const bg = vencido ? COLOR.MERMA_BG : proximo ? 'FEF9C3' : null
+      const proximo30 = r.estado_vencimiento === 'PRÓXIMO ≤30d'
+      const proximo60 = r.estado_vencimiento === 'PRÓXIMO ≤60d'
+      const proximo90 = r.estado_vencimiento === 'PRÓXIMO ≤90d'
+      const bg = vencido ? COLOR.MERMA_BG : proximo30 ? 'FEE2E2' : proximo60 ? 'FEF9C3' : proximo90 ? 'FFF3E0' : null
       const dias = Number(r.dias_restantes)
       const diasTexto = dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `${dias} días`
 
@@ -157,7 +160,7 @@ async function reporteVencimientos(req, res, next) {
       row.eachCell((cell, col) => col === 8 ? estiloNum(cell, bg) : estiloBase(cell, bg))
       const ec = row.getCell(9)
       ec.font = { bold: true, name: 'Arial', size: 9,
-        color: { argb: vencido ? 'DC2626' : proximo ? 'D97706' : '16A34A' } }
+        color: { argb: vencido ? 'DC2626' : proximo30 ? 'DC2626' : proximo60 ? 'D97706' : 'EA580C' } }
     })
 
     const buf = await wb.xlsx.writeBuffer()
@@ -175,8 +178,8 @@ async function reporteMovimientos(req, res, next) {
     wb.creator = 'Input Medical'; wb.created = new Date()
 
     const ws = setup(wb, 'Kardex',
-      ['Fecha','Tipo','Motivo','Producto','SKU','Nº Lote','Cantidad','Precio Vigente','Descuento','Total','Usuario'],
-      [24, 10, 10, 36, 18, 16, 10, 15, 14, 15, 28]
+      ['Fecha','Tipo','Motivo','Producto','SKU','Nº Lote','Cantidad','Precio Vigente','Descuento','Total','Observación','Usuario'],
+      [24, 10, 10, 36, 18, 16, 10, 15, 14, 15, 30, 28]
     )
 
     rows.forEach(r => {
@@ -199,6 +202,7 @@ async function reporteMovimientos(req, res, next) {
         r.precio_unitario ? Number(r.precio_unitario) : null,
         r.descuento_monto > 0 ? Number(r.descuento_monto) : null,
         total,
+        r.observacion || '—',
         r.usuario_email || '—',
       ])
       row.height = 20
@@ -227,4 +231,113 @@ async function reporteMovimientos(req, res, next) {
   } catch (err) { next(err) }
 }
 
-module.exports = { reporteStock, reporteVencimientos, reporteMovimientos }
+// GET /api/reportes/financiero
+async function reporteFinanciero(req, res, next) {
+  try {
+    const { periodo = 'mes', fecha_desde, fecha_hasta } = req.query
+
+    const HOY = `DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Santiago') AT TIME ZONE 'America/Santiago'`
+    let desde, hasta, tituloperiodo
+    switch (periodo) {
+      case 'hoy':
+        desde = HOY; hasta = `NOW()`; tituloperiodo = 'Hoy'; break
+      case 'semana':
+        desde = `DATE_TRUNC('week', NOW() AT TIME ZONE 'America/Santiago') AT TIME ZONE 'America/Santiago'`
+        hasta = `NOW()`; tituloperiodo = 'Esta semana'; break
+      case 'mes':
+        desde = `DATE_TRUNC('month', NOW() AT TIME ZONE 'America/Santiago') AT TIME ZONE 'America/Santiago'`
+        hasta = `NOW()`; tituloperiodo = 'Este mes'; break
+      case 'custom':
+        if (!fecha_desde || !fecha_hasta) return res.status(400).json({ error: 'Fechas requeridas' })
+        desde = `'${fecha_desde}'::timestamptz`
+        hasta  = `'${fecha_hasta} 23:59:59'::timestamptz`
+        tituloperiodo = `${fecha_desde} al ${fecha_hasta}`; break
+      default:
+        desde = `DATE_TRUNC('month', NOW() AT TIME ZONE 'America/Santiago') AT TIME ZONE 'America/Santiago'`
+        hasta = `NOW()`; tituloperiodo = 'Este mes'
+    }
+
+    const { rows } = await pool.query(`
+      SELECT
+        (m.created_at AT TIME ZONE 'America/Santiago')::date AS fecha,
+        m.tipo, m.motivo, m.observacion, m.usuario_email,
+        m.cantidad, m.precio_unitario, m.descuento_monto, m.total,
+        COALESCE(p.nombre, m.producto_nombre_cache, '[Producto eliminado]') AS producto_nombre,
+        COALESCE(p.sku, '[eliminado]') AS producto_sku
+      FROM movimientos m
+      LEFT JOIN productos p ON p.id = m.producto_id
+      WHERE m.created_at >= ${desde} AND m.created_at <= ${hasta}
+        AND m.tipo = 'SALIDA'
+        AND m.motivo != 'ELIMINACION_PERMANENTE'
+      ORDER BY m.created_at ASC
+    `)
+
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'Input Medical'; wb.created = new Date()
+
+    const ws = setup(wb, `Reporte ${tituloperiodo}`,
+      ['Fecha', 'Producto', 'SKU', 'Tipo', 'Cantidad', 'Precio Unit.', 'Descuento', 'Total', 'Observación', 'Usuario'],
+      [14, 36, 18, 10, 10, 15, 14, 15, 30, 28]
+    )
+
+    let totalVentas = 0, totalMermas = 0, totalDescuentos = 0
+
+    rows.forEach(r => {
+      const esMerma  = r.motivo === 'MERMA'
+      const esAjuste = r.motivo === 'AJUSTE'
+      const bg = esMerma ? COLOR.MERMA_BG : esAjuste ? COLOR.AJUSTE_BG : null
+
+      if (!esAjuste && r.total) {
+        if (esMerma) totalMermas += Number(r.total)
+        else totalVentas += Number(r.total)
+      }
+      if (r.descuento_monto) totalDescuentos += Number(r.descuento_monto)
+
+      const fechaStr = r.fecha instanceof Date ? r.fecha.toISOString().split('T')[0] : String(r.fecha).split('T')[0]
+
+      const row = ws.addRow([
+        fechaStr,
+        r.producto_nombre,
+        r.producto_sku,
+        r.motivo || '—',
+        -Number(r.cantidad),
+        r.precio_unitario ? Number(r.precio_unitario) : null,
+        r.descuento_monto > 0 ? Number(r.descuento_monto) : null,
+        r.total ? (esMerma ? -Number(r.total) : Number(r.total)) : null,
+        r.observacion || '—',
+        r.usuario_email || '—',
+      ])
+      row.height = 20
+      row.eachCell((cell, col) => {
+        if ([6, 7, 8].includes(col)) estiloNum(cell, bg)
+        else estiloBase(cell, bg)
+      })
+      if (esMerma) {
+        row.getCell(8).font = { bold: true, name: 'Arial', size: 9, color: { argb: 'DC2626' } }
+      }
+    })
+
+    // Fila resumen al pie
+    ws.addRow([])
+    const r1 = ws.addRow(['', '', '', 'TOTAL VENTAS', '', '', '', totalVentas, '', ''])
+    const r2 = ws.addRow(['', '', '', 'TOTAL MERMAS', '', '', '', -totalMermas, '', ''])
+    const r3 = ws.addRow(['', '', '', 'DESCUENTOS',   '', '', '', -totalDescuentos, '', ''])
+    const r4 = ws.addRow(['', '', '', 'NETO',         '', '', '', totalVentas - totalMermas, '', ''])
+    ;[r1, r2, r3, r4].forEach(row => {
+      row.height = 20
+      row.eachCell((cell, col) => {
+        cell.font = { bold: true, name: 'Arial', size: 10 }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.TOTAL_BG } }
+        cell.border = borde()
+        if (col === 8) { cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right', vertical: 'middle' } }
+      })
+    })
+
+    const buf = await wb.xlsx.writeBuffer()
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="reporte_financiero_${tituloperiodo.replace(/ /g,'_')}.xlsx"`)
+    res.send(buf)
+  } catch (err) { next(err) }
+}
+
+module.exports = { reporteStock, reporteVencimientos, reporteMovimientos, reporteFinanciero }
